@@ -1,0 +1,17 @@
+[package]
+name = "ewkb"
+version = "0.9.0"
+authors = ["ShuYu Wang <andelf@gmail.com>", "Pirmin Kalberer <pka@sourcepole.ch>"]
+description = "Fork of rust-postgres, keeping only the EWKB parser."
+homepage = "https://github.com/Mortal/rust-ewkb"
+repository = "https://github.com/Mortal/rust-ewkb"
+readme = "README.md"
+# documentation = "https://docs.rs/postgis/"
+keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+byteorder = "1.4"
+
+[dev-dependencies]
