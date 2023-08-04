@@ -33,23 +33,6 @@ impl From<WKBError> for PyErr {
 
 use self::pyo3::exceptions::PyValueError;
 
-//TODO:
-// - Add geojson to EWKB conversion (should be easy as the geom traits implement as_ewkb())
-// - Add geojson to TWKB conversion (would need to implement this it seems, so let's skip for now)
-// - Add ewkb/twkb to geojson string conversion
-// - Add python side tests
-// - Rename functions so the API becomes more extensible, e.g. ewkb_to_geojson, ewkb_to_str, ewkb_to_twkb...
-// - Add tox for running tests with all supported python versions
-// - Build maturin for all supported python versions, manylinux x64
-// - Run clippy
-// - Add pre-commit (with both rust and python stuffs)
-// - Check if current lifetime specifiers are needed
-// - Add benchmarks
-// - Publish to pypi
-// - ...
-// - Profile
-// - Play around with zero-copy ideas
-
 /// TWKB parse
 #[pyfunction]
 fn twkb_to_geojson<'a>(py: Python<'a>, mut data: &[u8]) -> PyResult<&'a PyDict> {
