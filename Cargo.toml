@@ -6,7 +6,7 @@ description = "Parse EWKB and TWKB geometries into GeoJSON, with Python bindings
 homepage = "https://github.com/arjuote/wkbparse"
 repository = "https://github.com/arjuote/wkbparse"
 readme = "README.md"
-keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO", "WKB", "TWKB"]
+keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO", "WKB", "TWKB", "GeoJSON"]
 license = "MIT"
 
 [lib]
@@ -20,7 +20,7 @@ serde_json = "1.0.99"
 pyo3 = {version = "0.19.0", optional = true}
 
 [profile.release]
-lto = "on"
+lto = true
 
 [dev-dependencies]
 

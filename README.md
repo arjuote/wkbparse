@@ -16,7 +16,7 @@ The benefits may be especially noticeable when dealing with large geometries wit
 
 Pre-built wheels are available for the following platforms and python versions:
 
-Python versions: `[3.8, 3.9, 3.10, 3.11]`
+Python versions: `[3.8, 3.9, 3.10, 3.11, 3.12]`
 
 Platforms: Linux `[x86_64, x86, aarch64, armv7, s390x, ppc64le]`, Windows: `[x64, x86]`, MacOS: `[x86_64, aarch64]`
 
@@ -37,11 +37,12 @@ This module implements the following functionalities:
 
 The following is not currently implemented:
 
+- Support for GeometryCollection types
 - Encoding any data in TWKB
 
 Example:
 
-```
+```python
 import wkbparse
 
 twkb_bytes = bytes.fromhex("610805d00fa01f50")
@@ -63,11 +64,11 @@ When serializing to GeoJSON strings directly, the `crs` is instead expressed as 
 
 ```
 {
-    "crs": {
-        "type": "name",
-        "properties": {
-            "name": "EPSG:4326" # The number is the SRID integer above
-        }
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "EPSG:4326" # The number is the SRID integer above
     }
+  }
 }
 ```
