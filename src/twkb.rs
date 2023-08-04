@@ -1,23 +1,13 @@
 //
 // Copyright (c) Pirmin Kalberer. All rights reserved.
 //
+#![allow(clippy::redundant_field_names)]
 
-//! Read geometries in [Tiny WKB](https://github.com/TWKB/Specification/blob/master/twkb.md) format.
-//!
-//! ```rust,no_run
-//! # use postgres::{Client, NoTls};
-//! use postgis::{twkb, LineString, ewkb::AsEwkbPoint};
-//!
-//! # let mut client = Client::connect("host=localhost user=postgres", NoTls).unwrap();
-//! for row in &client.query("SELECT ST_AsTWKB(route) FROM busline", &[]).unwrap() {
-//!     let route: twkb::LineString = row.get(0);
-//!     let last_stop = route.points().last().unwrap();
-//!     let _ = client.execute("INSERT INTO stops (stop) VALUES ($1)", &[&last_stop.as_ewkb()]);
-//! }
-//! ```
+extern crate byteorder;
 
+use self::byteorder::ReadBytesExt;
+use crate::geojson::GeometryType;
 use crate::{error::Error, ewkb, types as postgis};
-use byteorder::ReadBytesExt;
 use std::f64;
 use std::fmt;
 use std::io::prelude::*;
@@ -27,7 +17,9 @@ use std::u8;
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct Point {
     pub x: f64,
-    pub y: f64, // TODO: support for z, m
+    pub y: f64,
+    pub z: Option<f64>,
+    pub m: Option<f64>,
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -70,6 +62,38 @@ pub struct TwkbInfo {
     has_m: bool,
     prec_z: Option<u8>,
     prec_m: Option<u8>,
+}
+
+pub fn get_geom_type(data: &[u8]) -> GeometryType {
+    // Check geometry type from the first byte of a TWKB geometry
+    if data.is_empty() {
+        return GeometryType::None;
+    }
+    let type_and_prec = data[0];
+    let geom_type = type_and_prec & 0x0F;
+    if geom_type == 1 {
+        return GeometryType::Point;
+    }
+    if geom_type == 2 {
+        return GeometryType::LineString;
+    }
+    if geom_type == 3 {
+        return GeometryType::Polygon;
+    }
+    if geom_type == 4 {
+        return GeometryType::MultiPoint;
+    }
+    if geom_type == 5 {
+        return GeometryType::MultiLineString;
+    }
+    if geom_type == 6 {
+        return GeometryType::MultiPolygon;
+    }
+    if geom_type == 7 {
+        return GeometryType::GeometryCollection;
+    }
+
+    GeometryType::None
 }
 
 pub trait TwkbGeom: fmt::Debug + Sized {
@@ -131,13 +155,13 @@ pub trait TwkbGeom: fmt::Debug + Sized {
         let x2 = x + read_varint64_as_f64(raw, twkb_info.precision)?;
         let y2 = y + read_varint64_as_f64(raw, twkb_info.precision)?;
         let z2 = if twkb_info.has_z {
-            let dz = read_varint64_as_f64(raw, twkb_info.precision)?;
+            let dz = read_varint64_as_f64(raw, twkb_info.prec_z.unwrap() as i8)?;
             z.map(|v| v + dz)
         } else {
             None
         };
         let m2 = if twkb_info.has_m {
-            let dm = read_varint64_as_f64(raw, twkb_info.precision)?;
+            let dm = read_varint64_as_f64(raw, twkb_info.prec_m.unwrap() as i8)?;
             m.map(|v| v + dm)
         } else {
             None
@@ -168,7 +192,7 @@ fn read_raw_varint64<R: Read>(raw: &mut R) -> Result<u64, Error> {
         }
         let b = raw.read_u8()?;
         // TODO: may overflow if i == 9
-        r = r | (((b & 0x7f) as u64) << (i * 7));
+        r |= ((b & 0x7f) as u64) << (i * 7);
         i += 1;
         if b < 0x80 {
             return Ok(r);
@@ -188,7 +212,7 @@ fn varint64_to_f64(varint: u64, precision: i8) -> f64 {
     if precision >= 0 {
         (decode_zig_zag_64(varint) as f64) / 10u64.pow(precision as u32) as f64
     } else {
-        (decode_zig_zag_64(varint) as f64) * 10u64.pow(precision.abs() as u32) as f64
+        (decode_zig_zag_64(varint) as f64) * 10u64.pow(precision.unsigned_abs() as u32) as f64
     }
 }
 
@@ -200,7 +224,12 @@ fn read_varint64_as_f64<R: Read>(raw: &mut R, precision: i8) -> Result<f64, Erro
 
 impl Point {
     fn new_from_opt_vals(x: f64, y: f64, _z: Option<f64>, _m: Option<f64>) -> Self {
-        Point { x: x, y: y }
+        Point {
+            x: x,
+            y: y,
+            z: _z,
+            m: _m,
+        }
     }
 }
 
@@ -210,6 +239,21 @@ impl postgis::Point for Point {
     }
     fn y(&self) -> f64 {
         self.y
+    }
+    fn opt_m(&self) -> Option<f64> {
+        self.m
+    }
+    fn opt_z(&self) -> Option<f64> {
+        self.z
+    }
+    fn crds(&self) -> Vec<f64> {
+        {
+            if let Some(z) = self.opt_z() {
+                [self.x(), self.y(), z].to_vec()
+            } else {
+                [self.x(), self.y()].to_vec()
+            }
+        }
     }
 }
 
@@ -221,12 +265,12 @@ impl TwkbGeom for Point {
         let x = read_varint64_as_f64(raw, twkb_info.precision)?;
         let y = read_varint64_as_f64(raw, twkb_info.precision)?;
         let z = if twkb_info.has_z {
-            Some(read_varint64_as_f64(raw, twkb_info.precision)?)
+            Some(read_varint64_as_f64(raw, twkb_info.prec_z.unwrap() as i8)?)
         } else {
             None
         };
         let m = if twkb_info.has_m {
-            Some(read_varint64_as_f64(raw, twkb_info.precision)?)
+            Some(read_varint64_as_f64(raw, twkb_info.prec_m.unwrap() as i8)?)
         } else {
             None
         };
@@ -574,7 +618,7 @@ use ewkb::{
 };
 
 #[cfg(test)]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn hex_to_vec(hexstr: &str) -> Vec<u8> {
     hexstr.as_bytes().chunks(2).map(|chars| {
         let hb = if chars[0] <= 57 { chars[0] - 48 } else { chars[0] - 87 };
@@ -584,43 +628,43 @@ fn hex_to_vec(hexstr: &str) -> Vec<u8> {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_read_point() {
     let twkb = hex_to_vec("01001427"); // SELECT encode(ST_AsTWKB('POINT(10 -20)'::geometry), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20 }");
+    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20, z: None, m: None }");
 
     let twkb = hex_to_vec("0108011427c601"); // SELECT encode(ST_AsTWKB('POINT(10 -20 99)'::geometry), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20 }");
+    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20, z: Some(99), m: None }");
 
     let twkb = hex_to_vec("2100ca019503"); // SELECT encode(ST_AsTWKB('POINT(10.12 -20.34)'::geometry, 1), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.1?}", point), "Point { x: 10.1, y: -20.3 }");
+    assert_eq!(format!("{:.1?}", point), "Point { x: 10.1, y: -20.3, z: None, m: None }");
 
     let twkb = hex_to_vec("11000203"); // SELECT encode(ST_AsTWKB('POINT(11.12 -22.34)'::geometry, -1), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20 }");
+    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20, z: None, m: None }");
 
     let twkb = hex_to_vec("0110"); // SELECT encode(ST_AsTWKB('POINT EMPTY'::geometry), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:?}", point), "Point { x: NaN, y: NaN }");
+    assert_eq!(format!("{:?}", point), "Point { x: NaN, y: NaN, z: None, m: None }");
 
     let twkb = hex_to_vec("a10080897aff91f401"); // SELECT encode(ST_AsTWKB('SRID=4326;POINT(10 -20)'::geometry), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20 }");
+    assert_eq!(format!("{:.0?}", point), "Point { x: 10, y: -20, z: None, m: None }");
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_read_line() {
     let twkb = hex_to_vec("02000214271326"); // SELECT encode(ST_AsTWKB('LINESTRING (10 -20, -0 -0.5)'::geometry), 'hex')
     let line = LineString::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", line), "LineString { points: [Point { x: 10, y: -20 }, Point { x: 0, y: -1 }] }");
+    assert_eq!(format!("{:.0?}", line), "LineString { points: [Point { x: 10, y: -20, z: None, m: None }, Point { x: 0, y: -1, z: None, m: None }] }");
 
     let twkb = hex_to_vec("220002c8018f03c7018603"); // SELECT encode(ST_AsTWKB('LINESTRING (10 -20, -0 -0.5)'::geometry, 1), 'hex')
     let line = LineString::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.1?}", line), "LineString { points: [Point { x: 10.0, y: -20.0 }, Point { x: 0.0, y: -0.5 }] }");
+    assert_eq!(format!("{:.1?}", line), "LineString { points: [Point { x: 10.0, y: -20.0, z: None, m: None }, Point { x: 0.0, y: -0.5, z: None, m: None }] }");
 
     let twkb = hex_to_vec("0210"); // SELECT encode(ST_AsTWKB('LINESTRING EMPTY'::geometry), 'hex')
     let line = LineString::read_twkb(&mut twkb.as_slice()).unwrap();
@@ -628,39 +672,53 @@ fn test_read_line() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_read_polygon() {
     let twkb = hex_to_vec("03000205000004000004030000030514141700001718000018"); // SELECT encode(ST_AsTWKB('POLYGON ((0 0, 2 0, 2 2, 0 2, 0 0),(10 10, -2 10, -2 -2, 10 -2, 10 10))'::geometry), 'hex')
     let poly = Polygon::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", poly), "Polygon { rings: [LineString { points: [Point { x: 0, y: 0 }, Point { x: 2, y: 0 }, Point { x: 2, y: 2 }, Point { x: 0, y: 2 }, Point { x: 0, y: 0 }] }, LineString { points: [Point { x: 10, y: 10 }, Point { x: -2, y: 10 }, Point { x: -2, y: -2 }, Point { x: 10, y: -2 }, Point { x: 10, y: 10 }] }] }");
+    assert_eq!(format!("{:.0?}", poly), "Polygon { rings: [LineString { points: [Point { x: 0, y: 0, z: None, m: None }, Point { x: 2, y: 0, z: None, m: None }, Point { x: 2, y: 2, z: None, m: None }, Point { x: 0, y: 2, z: None, m: None }, Point { x: 0, y: 0, z: None, m: None }] }, LineString { points: [Point { x: 10, y: 10, z: None, m: None }, Point { x: -2, y: 10, z: None, m: None }, Point { x: -2, y: -2, z: None, m: None }, Point { x: 10, y: -2, z: None, m: None }, Point { x: 10, y: 10, z: None, m: None }] }] }");
+
+    let twkb = hex_to_vec("6300010500000080dac40980dac4090000ffd9c409ffd9c40900");
+    let poly = Polygon::read_twkb(&mut twkb.as_slice()).unwrap();
+    assert_eq!(format!("{:.0?}", poly), "Polygon { rings: [LineString { points: [Point { x: 0, y: 0, z: None, m: None }, Point { x: 0, y: 10000, z: None, m: None }, Point { x: 10000, y: 10000, z: None, m: None }, Point { x: 10000, y: 0, z: None, m: None }, Point { x: 0, y: 0, z: None, m: None }] }] }");
+
+    let twkb = hex_to_vec("6300010500000080a8b0fe1080a8b0fe100000ffa7b0fe10ffa7b0fe1000");
+    let poly = Polygon::read_twkb(&mut twkb.as_slice()).unwrap();
+    assert_eq!(format!("{:.0?}", poly), "Polygon { rings: [LineString { points: [Point { x: 0, y: 0, z: None, m: None }, Point { x: 0, y: 2280000, z: None, m: None }, Point { x: 2280000, y: 2280000, z: None, m: None }, Point { x: 2280000, y: 0, z: None, m: None }, Point { x: 0, y: 0, z: None, m: None }] }] }");
+
+    let twkb = hex_to_vec("6300010500000098b2b0fe1098b2b0fe10000097b2b0fe1097b2b0fe1000");
+    let poly = Polygon::read_twkb(&mut twkb.as_slice()).unwrap();
+    assert_eq!(format!("{:.2?}", poly), "Polygon { rings: [LineString { points: [Point { x: 0.00, y: 0.00, z: None, m: None }, Point { x: 0.00, y: 2280000.65, z: None, m: None }, Point { x: 2280000.65, y: 2280000.65, z: None, m: None }, Point { x: 2280000.65, y: 0.00, z: None, m: None }, Point { x: 0.00, y: 0.00, z: None, m: None }] }] }");
+
+
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_read_multipoint() {
     let twkb = hex_to_vec("04000214271326"); // SELECT encode(ST_AsTWKB('MULTIPOINT ((10 -20), (0 -0.5))'::geometry), 'hex')
     let points = MultiPoint::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", points), "MultiPoint { points: [Point { x: 10, y: -20 }, Point { x: 0, y: -1 }], ids: None }");
+    assert_eq!(format!("{:.0?}", points), "MultiPoint { points: [Point { x: 10, y: -20, z: None, m: None }, Point { x: 0, y: -1, z: None, m: None }], ids: None }");
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_read_multiline() {
     let twkb = hex_to_vec("05000202142713260200020400"); // SELECT encode(ST_AsTWKB('MULTILINESTRING ((10 -20, 0 -0.5), (0 0, 2 0))'::geometry), 'hex')
     let lines = MultiLineString::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", lines), "MultiLineString { lines: [LineString { points: [Point { x: 10, y: -20 }, Point { x: 0, y: -1 }] }, LineString { points: [Point { x: 0, y: 0 }, Point { x: 2, y: 0 }] }], ids: None }");
+    assert_eq!(format!("{:.0?}", lines), "MultiLineString { lines: [LineString { points: [Point { x: 10, y: -20, z: None, m: None }, Point { x: 0, y: -1, z: None, m: None }] }, LineString { points: [Point { x: 0, y: 0, z: None, m: None }, Point { x: 2, y: 0, z: None, m: None }] }], ids: None }");
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_read_multipolygon() {
     let twkb = hex_to_vec("060002010500000400000403000003010514141700001718000018"); // SELECT encode(ST_AsTWKB('MULTIPOLYGON (((0 0, 2 0, 2 2, 0 2, 0 0)), ((10 10, -2 10, -2 -2, 10 -2, 10 10)))'::geometry), 'hex')
     let polys = MultiPolygon::read_twkb(&mut twkb.as_slice()).unwrap();
-    assert_eq!(format!("{:.0?}", polys), "MultiPolygon { polygons: [Polygon { rings: [LineString { points: [Point { x: 0, y: 0 }, Point { x: 2, y: 0 }, Point { x: 2, y: 2 }, Point { x: 0, y: 2 }, Point { x: 0, y: 0 }] }] }, Polygon { rings: [LineString { points: [Point { x: 10, y: 10 }, Point { x: -2, y: 10 }, Point { x: -2, y: -2 }, Point { x: 10, y: -2 }, Point { x: 10, y: 10 }] }] }], ids: None }");
+    assert_eq!(format!("{:.0?}", polys), "MultiPolygon { polygons: [Polygon { rings: [LineString { points: [Point { x: 0, y: 0, z: None, m: None }, Point { x: 2, y: 0, z: None, m: None }, Point { x: 2, y: 2, z: None, m: None }, Point { x: 0, y: 2, z: None, m: None }, Point { x: 0, y: 0, z: None, m: None }] }] }, Polygon { rings: [LineString { points: [Point { x: 10, y: 10, z: None, m: None }, Point { x: -2, y: 10, z: None, m: None }, Point { x: -2, y: -2, z: None, m: None }, Point { x: 10, y: -2, z: None, m: None }, Point { x: 10, y: 10, z: None, m: None }] }] }], ids: None }");
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_write_point() {
     let twkb = hex_to_vec("01001427"); // SELECT encode(ST_AsTWKB('POINT(10 -20)'::geometry), 'hex')
     let point = Point::read_twkb(&mut twkb.as_slice()).unwrap();
@@ -669,7 +727,7 @@ fn test_write_point() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_write_line() {
     let twkb = hex_to_vec("220002c8018f03c7018603"); // SELECT encode(ST_AsTWKB('LINESTRING (10 -20, -0 -0.5)'::geometry, 1), 'hex')
     let line = LineString::read_twkb(&mut twkb.as_slice()).unwrap();
@@ -678,7 +736,7 @@ fn test_write_line() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_write_polygon() {
     let twkb = hex_to_vec("03000205000004000004030000030514141700001718000018"); // SELECT encode(ST_AsTWKB('POLYGON ((0 0, 2 0, 2 2, 0 2, 0 0),(10 10, -2 10, -2 -2, 10 -2, 10 10))'::geometry), 'hex')
     let polygon = Polygon::read_twkb(&mut twkb.as_slice()).unwrap();
@@ -687,29 +745,25 @@ fn test_write_polygon() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_write_multipoint() {
     let twkb = hex_to_vec("04000214271326"); // SELECT encode(ST_AsTWKB('MULTIPOINT ((10 -20), (0 -0.5))'::geometry), 'hex')
     let multipoint = MultiPoint::read_twkb(&mut twkb.as_slice()).unwrap();
     assert_eq!(format!("{:?}", multipoint.as_ewkb()), "EwkbMultiPoint");
-    //assert_eq!(multipoint.as_ewkb().to_hex_ewkb(), "0104000000020000000101000000000000000000244000000000000034C001010000000000000000000000000000000000E0BF");
-    // "MULTIPOINT(10 -20,0 -1)"
     assert_eq!(multipoint.as_ewkb().to_hex_ewkb(), "0104000000020000000101000000000000000000244000000000000034C001010000000000000000000000000000000000F0BF");
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_write_multiline() {
     let twkb = hex_to_vec("05000202142713260200020400"); // SELECT encode(ST_AsTWKB('MULTILINESTRING ((10 -20, 0 -0.5), (0 0, 2 0))'::geometry), 'hex')
     let multiline = MultiLineString::read_twkb(&mut twkb.as_slice()).unwrap();
     assert_eq!(format!("{:?}", multiline.as_ewkb()), "EwkbMultiLineString");
-    //assert_eq!(multiline.as_ewkb().to_hex_ewkb(), "010500000002000000010200000002000000000000000000244000000000000034C00000000000000000000000000000E0BF0102000000020000000000000000000000000000000000000000000000000000400000000000000000");
-    // "MULTILINESTRING((10 -20,0 -1),(0 0,2 0))"
     assert_eq!(multiline.as_ewkb().to_hex_ewkb(), "010500000002000000010200000002000000000000000000244000000000000034C00000000000000000000000000000F0BF0102000000020000000000000000000000000000000000000000000000000000400000000000000000");
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn test_write_multipoly() {
     let twkb = hex_to_vec("060002010500000400000403000003010514141700001718000018"); // SELECT encode(ST_AsTWKB('MULTIPOLYGON (((0 0, 2 0, 2 2, 0 2, 0 0)), ((10 10, -2 10, -2 -2, 10 -2, 10 10)))'::geometry), 'hex')
     let multipoly = MultiPolygon::read_twkb(&mut twkb.as_slice()).unwrap();
