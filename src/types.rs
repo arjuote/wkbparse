@@ -1,16 +1,14 @@
 //
 // Copyright (c) Pirmin Kalberer. All rights reserved.
 //
+#![allow(clippy::type_complexity)]
 
 pub trait Point: Send + Sync {
     fn x(&self) -> f64;
     fn y(&self) -> f64;
-    fn opt_z(&self) -> Option<f64> {
-        None
-    }
-    fn opt_m(&self) -> Option<f64> {
-        None
-    }
+    fn opt_z(&self) -> Option<f64>;
+    fn opt_m(&self) -> Option<f64>;
+    fn crds(&self) -> Vec<f64>;
 }
 
 pub trait LineString<'a>: Send + Sync {

@@ -1,17 +1,30 @@
 [package]
-name = "ewkb"
-version = "0.9.0"
-authors = ["ShuYu Wang <andelf@gmail.com>", "Pirmin Kalberer <pka@sourcepole.ch>"]
-description = "Fork of rust-postgres, keeping only the EWKB parser."
-homepage = "https://github.com/Mortal/rust-ewkb"
-repository = "https://github.com/Mortal/rust-ewkb"
+name = "wkbparse"
+version = "0.1.0"
+authors = ["Arsi Juote <arsi.juote@gmail.com>"]
+description = "Parse EWKB and TWKB geometries into GeoJSON, with Python bindings."
+homepage = "https://github.com/arjuote/wkbparse"
+repository = "https://github.com/arjuote/wkbparse"
 readme = "README.md"
-# documentation = "https://docs.rs/postgis/"
-keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO"]
+keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO", "WKB", "TWKB"]
 license = "MIT"
-edition = "2018"
+
+[lib]
+name = "wkbparse"
+crate-type = ["cdylib"]
 
 [dependencies]
 byteorder = "1.4"
+serde = { version = "1.0.164", features = ["derive"] }
+serde_json = "1.0.99"
+pyo3 = {version = "0.19.0", optional = true}
+
+[profile.release]
+lto = "on"
 
 [dev-dependencies]
+
+[features]
+python = ["pyo3"]
+extension-module = ["pyo3/extension-module"]
+default = ["python", "extension-module"]

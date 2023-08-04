@@ -1,0 +1,43 @@
+[project]
+name = "wkbparse"
+description = "EWKB and TWKB parsing and conversion to GeoJSON"
+version = "0.1.0"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[build-system]
+requires = ["maturin>=1.1,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+
+[tool.poetry]
+name = "wkbparse"
+version = "0.1.0"
+description = "EWKB and TWKB parsing and conversion to GeoJSON"
+authors = ["Arsi Juote <arsi.juote@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+pylint = "^2.17.5"
+detect-secrets = "^1.4.0"
+tox = "^4.6.4"
+
+[tool.pylint.messages_control]
+disable = ["fixme", "R0903", "C0301", "E1101", "C0209", "R0801"]
+
+[tool.pylint.format]
+max-line-length = 120
