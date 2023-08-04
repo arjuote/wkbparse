@@ -5,12 +5,17 @@ version = "0.1.0"
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
+keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO", "WKB", "TWKB", "GeoJSON"]
 classifiers = [
     "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License"
 ]
-
+urls = { Source = "https://github.com/arjuote/wkbparse" }
 [build-system]
 requires = ["maturin>=1.1,<2.0"]
 build-backend = "maturin"
