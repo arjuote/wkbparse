@@ -1,0 +1,2 @@
+*.ewkb filter=lfs diff=lfs merge=lfs -text
+*.twkb filter=lfs diff=lfs merge=lfs -text
