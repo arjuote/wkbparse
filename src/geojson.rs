@@ -81,13 +81,10 @@ where
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Point {
-    // pub struct GeoJSONPoint<'a> {
     #[serde(rename(serialize = "type"))]
     pub type_name: String,
     #[serde(serialize_with = "crs_serializer")]
     pub crs: Option<i32>,
-    // pub coordinates: Cow<'a, [f64]>,
-    // pub coordinates: &'a [f64],
     pub coordinates: Vec<f64>,
 }
 
@@ -352,7 +349,6 @@ impl GeoJSONEncode for MultiPoint {
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct MultiLineString {
-    // pub struct GeoJSONPoint<'a> {
     #[serde(rename(serialize = "type"))]
     pub type_name: String,
     #[serde(serialize_with = "crs_serializer")]
