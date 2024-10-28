@@ -239,7 +239,11 @@ impl postgis::Point for Point {
     fn crds(&self) -> Vec<f64> {
         {
             if let Some(z) = self.opt_z() {
-                [self.x(), self.y(), z].to_vec()
+                if let Some(m) = self.opt_m() {
+                    [self.x(), self.y(), z, m].to_vec()
+                } else {
+                    [self.x(), self.y(), z].to_vec()
+                }
             } else {
                 [self.x(), self.y()].to_vec()
             }
@@ -284,7 +288,11 @@ impl postgis::Point for PointZ {
     fn crds(&self) -> Vec<f64> {
         {
             if let Some(z) = self.opt_z() {
-                [self.x(), self.y(), z].to_vec()
+                if let Some(m) = self.opt_m() {
+                    [self.x(), self.y(), z, m].to_vec()
+                } else {
+                    [self.x(), self.y(), z].to_vec()
+                }
             } else {
                 [self.x(), self.y()].to_vec()
             }
@@ -329,7 +337,11 @@ impl postgis::Point for PointM {
     fn crds(&self) -> Vec<f64> {
         {
             if let Some(z) = self.opt_z() {
-                [self.x(), self.y(), z].to_vec()
+                if let Some(m) = self.opt_m() {
+                    [self.x(), self.y(), z, m].to_vec()
+                } else {
+                    [self.x(), self.y(), z].to_vec()
+                }
             } else {
                 [self.x(), self.y()].to_vec()
             }
@@ -374,7 +386,11 @@ impl postgis::Point for PointZM {
     fn crds(&self) -> Vec<f64> {
         {
             if let Some(z) = self.opt_z() {
-                [self.x(), self.y(), z].to_vec()
+                if let Some(m) = self.opt_m() {
+                    [self.x(), self.y(), z, m].to_vec()
+                } else {
+                    [self.x(), self.y(), z].to_vec()
+                }
             } else {
                 [self.x(), self.y()].to_vec()
             }
