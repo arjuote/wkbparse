@@ -1,6 +1,6 @@
 [package]
 name = "wkbparse"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Arsi Juote <arsi.juote@gmail.com>"]
 description = "Parse EWKB and TWKB geometries into GeoJSON, with Python bindings."
 homepage = "https://github.com/arjuote/wkbparse"

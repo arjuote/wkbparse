@@ -6,6 +6,8 @@ Original EWKB/TWKB encoding code forked from [https://github.com/Mortal/rust-ewk
 
 `wkbparse` is developed mainly for usage with PostGIS and has been tested with geometries generated with one. However, it has no explicit dependencies towards PostgreSQL or PostGIS and can be used with EWKB/TWKB geometries originating from any system. In such case it is advisable to validate results carefully before using for anything serious.
 
+It supports reading and writing ZM geometries as well, even though GeoJSON specification doesn't really recognize the M coordinate. The M coordinate is simply output as the fourth coordinate in a vertex. Respectively, input GeoJSON dictionaries with four coordinates in a vertex are treated as ZM geometries.
+
 ## Motivation
 
 The main rationale behind this library is to offload compute related to geometry encoding from the database to the application and to minimize data transfer between them. This can be achieved by favoring native EWKB geometries or better-yet the transfer-optimized TWKB-geometries instead of making the database encode the data in some text-based format such as WKT or GeoJSON and sending that over the wire.
