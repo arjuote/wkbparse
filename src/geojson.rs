@@ -2,6 +2,8 @@
 extern crate serde;
 extern crate serde_json;
 
+use std::fmt::Display;
+
 use error::Error;
 use ewkb;
 use ewkb::AsEwkbPoint;
@@ -28,6 +30,121 @@ pub enum GeometryType {
     MultiPolygon,
     GeometryCollection,
     None,
+}
+
+pub enum GeoJSONGeometry {
+    Point(Point),
+    LineString(LineString),
+    Polygon(Polygon),
+    MultiPoint(MultiPoint),
+    MultiLineString(MultiLineString),
+    MultiPolygon(MultiPolygon),
+}
+
+impl GeoJSONEncode for GeoJSONGeometry {
+    fn as_str(&self) -> String {
+        match self {
+            GeoJSONGeometry::Point(g) => g.as_str(),
+            GeoJSONGeometry::LineString(g) => g.as_str(),
+            GeoJSONGeometry::Polygon(g) => g.as_str(),
+            GeoJSONGeometry::MultiPoint(g) => g.as_str(),
+            GeoJSONGeometry::MultiLineString(g) => g.as_str(),
+            GeoJSONGeometry::MultiPolygon(g) => g.as_str(),
+        }
+    }
+
+    fn has_z(&self) -> bool {
+        match self {
+            GeoJSONGeometry::Point(g) => g.has_z(),
+            GeoJSONGeometry::LineString(g) => g.has_z(),
+            GeoJSONGeometry::Polygon(g) => g.has_z(),
+            GeoJSONGeometry::MultiPoint(g) => g.has_z(),
+            GeoJSONGeometry::MultiLineString(g) => g.has_z(),
+            GeoJSONGeometry::MultiPolygon(g) => g.has_z(),
+        }
+    }
+
+    fn has_zm(&self) -> bool {
+        match self {
+            GeoJSONGeometry::Point(g) => g.has_zm(),
+            GeoJSONGeometry::LineString(g) => g.has_zm(),
+            GeoJSONGeometry::Polygon(g) => g.has_zm(),
+            GeoJSONGeometry::MultiPoint(g) => g.has_zm(),
+            GeoJSONGeometry::MultiLineString(g) => g.has_zm(),
+            GeoJSONGeometry::MultiPolygon(g) => g.has_zm(),
+        }
+    }
+
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
+        match self {
+            GeoJSONGeometry::Point(g) => g.to_ewkb(),
+            GeoJSONGeometry::LineString(g) => g.to_ewkb(),
+            GeoJSONGeometry::Polygon(g) => g.to_ewkb(),
+            GeoJSONGeometry::MultiPoint(g) => g.to_ewkb(),
+            GeoJSONGeometry::MultiLineString(g) => g.to_ewkb(),
+            GeoJSONGeometry::MultiPolygon(g) => g.to_ewkb(),
+        }
+    }
+
+    fn srid(&self) -> Option<i32> {
+        match self {
+            GeoJSONGeometry::Point(g) => g.srid(),
+            GeoJSONGeometry::LineString(g) => g.srid(),
+            GeoJSONGeometry::Polygon(g) => g.srid(),
+            GeoJSONGeometry::MultiPoint(g) => g.srid(),
+            GeoJSONGeometry::MultiLineString(g) => g.srid(),
+            GeoJSONGeometry::MultiPolygon(g) => g.srid(),
+        }
+    }
+
+    fn set_srid(&mut self, srid: i32) {
+        match self {
+            GeoJSONGeometry::Point(g) => g.set_srid(srid),
+            GeoJSONGeometry::LineString(g) => g.set_srid(srid),
+            GeoJSONGeometry::Polygon(g) => g.set_srid(srid),
+            GeoJSONGeometry::MultiPoint(g) => g.set_srid(srid),
+            GeoJSONGeometry::MultiLineString(g) => g.set_srid(srid),
+            GeoJSONGeometry::MultiPolygon(g) => g.set_srid(srid),
+        }
+    }
+
+    fn geom_type(&self) -> GeometryType {
+        match self {
+            GeoJSONGeometry::Point(g) => g.geom_type(),
+            GeoJSONGeometry::LineString(g) => g.geom_type(),
+            GeoJSONGeometry::Polygon(g) => g.geom_type(),
+            GeoJSONGeometry::MultiPoint(g) => g.geom_type(),
+            GeoJSONGeometry::MultiLineString(g) => g.geom_type(),
+            GeoJSONGeometry::MultiPolygon(g) => g.geom_type(),
+        }
+    }
+
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        match self {
+            GeoJSONGeometry::Point(g) => g.transform(xform),
+            GeoJSONGeometry::LineString(g) => g.transform(xform),
+            GeoJSONGeometry::Polygon(g) => g.transform(xform),
+            GeoJSONGeometry::MultiPoint(g) => g.transform(xform),
+            GeoJSONGeometry::MultiLineString(g) => g.transform(xform),
+            GeoJSONGeometry::MultiPolygon(g) => g.transform(xform),
+        }
+    }
+}
+
+impl Display for GeometryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GeometryType::Point => write!(f, "Point"),
+            GeometryType::LineString => write!(f, "LineString"),
+            GeometryType::Polygon => write!(f, "Polygon"),
+            GeometryType::MultiPoint => write!(f, "MultiPoint"),
+            GeometryType::MultiLineString => write!(f, "MultiLineString"),
+            GeometryType::MultiPolygon => write!(f, "MultiPolygon"),
+            GeometryType::GeometryCollection => write!(f, "GeometryCollection"),
+            GeometryType::None => write!(f, "null"),
+        }
+    }
 }
 
 pub trait GeoJSONPoint: Send + Sync {
@@ -57,7 +174,12 @@ pub trait GeoJSONEncode: Send + Sync {
     fn as_str(&self) -> String;
     fn has_z(&self) -> bool;
     fn has_zm(&self) -> bool;
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error>;
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error>;
+    fn srid(&self) -> Option<i32>;
+    fn set_srid(&mut self, srid: i32);
+    fn geom_type(&self) -> GeometryType;
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error>;
 }
 
 #[derive(Serialize)]
@@ -111,20 +233,36 @@ impl GeoJSONEncode for Point {
     fn has_zm(&self) -> bool {
         self.coordinates.len() == 4
     }
+    fn srid(&self) -> Option<i32> {
+        self.crs
+    }
+    fn set_srid(&mut self, srid: i32) {
+        self.crs = Some(srid);
+    }
 
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error> {
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
         let mut data = Vec::with_capacity(9 + 8 * 3);
         if self.has_zm() {
-            let geom = to_ewkb_pointzm(&self.coordinates, srid);
+            let geom = to_ewkb_pointzm(&self.coordinates, self.crs);
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else if self.has_z() {
-            let geom = to_ewkb_pointz(&self.coordinates, srid);
+            let geom = to_ewkb_pointz(&self.coordinates, self.crs);
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else {
-            let geom = to_ewkb_point(&self.coordinates, srid);
+            let geom = to_ewkb_point(&self.coordinates, self.crs);
             geom.as_ewkb().write_ewkb(&mut data)?;
         }
         Ok(data)
+    }
+
+    fn geom_type(&self) -> GeometryType {
+        GeometryType::Point
+    }
+
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        use crate::reproject::{xform_crds, AsCrds};
+        xform_crds(&mut self.as_crds(), xform)
     }
 }
 
@@ -187,42 +325,56 @@ impl GeoJSONEncode for LineString {
     fn has_zm(&self) -> bool {
         !self.coordinates.is_empty() && self.coordinates[0].len() == 4
     }
+    fn srid(&self) -> Option<i32> {
+        self.crs
+    }
+    fn set_srid(&mut self, srid: i32) {
+        self.crs = Some(srid);
+    }
+    fn geom_type(&self) -> GeometryType {
+        GeometryType::LineString
+    }
 
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error> {
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
         let mut data = Vec::with_capacity(9 + 8 * 3 * self.coordinates.len());
         if self.has_zm() {
             let mut geom = ewkb::LineStringZM::new();
             let pnts = self
                 .coordinates
                 .iter()
-                .map(|crds| to_ewkb_pointzm(crds, srid))
+                .map(|crds| to_ewkb_pointzm(crds, self.crs))
                 .collect();
             geom.points = pnts;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else if self.has_z() {
             let mut geom = ewkb::LineStringZ::new();
             let pnts = self
                 .coordinates
                 .iter()
-                .map(|crds| to_ewkb_pointz(crds, srid))
+                .map(|crds| to_ewkb_pointz(crds, self.crs))
                 .collect();
             geom.points = pnts;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else {
             let mut geom = ewkb::LineString::new();
             let pnts = self
                 .coordinates
                 .iter()
-                .map(|crds| to_ewkb_point(crds, srid))
+                .map(|crds| to_ewkb_point(crds, self.crs))
                 .collect();
             geom.points = pnts;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         }
 
         Ok(data)
+    }
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        use crate::reproject::{xform_crds, AsCrds};
+        xform_crds(&mut self.as_crds(), xform)
     }
 }
 
@@ -255,7 +407,16 @@ impl GeoJSONEncode for Polygon {
             false
         }
     }
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error> {
+    fn srid(&self) -> Option<i32> {
+        self.crs
+    }
+    fn set_srid(&mut self, srid: i32) {
+        self.crs = Some(srid);
+    }
+    fn geom_type(&self) -> GeometryType {
+        GeometryType::Polygon
+    }
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
         let mut data = vec![];
         if self.has_zm() {
             let mut geom = ewkb::PolygonZM::new();
@@ -264,35 +425,48 @@ impl GeoJSONEncode for Polygon {
                 .iter()
                 .map(|ring| {
                     ring.iter()
-                        .map(|crds| to_ewkb_pointzm(crds, srid))
+                        .map(|crds| to_ewkb_pointzm(crds, self.crs))
                         .collect()
                 })
                 .collect();
             geom.rings = rings;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else if self.has_z() {
             let mut geom = ewkb::PolygonZ::new();
             let rings = self
                 .coordinates
                 .iter()
-                .map(|ring| ring.iter().map(|crds| to_ewkb_pointz(crds, srid)).collect())
+                .map(|ring| {
+                    ring.iter()
+                        .map(|crds| to_ewkb_pointz(crds, self.crs))
+                        .collect()
+                })
                 .collect();
             geom.rings = rings;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else {
             let mut geom = ewkb::Polygon::new();
             let rings = self
                 .coordinates
                 .iter()
-                .map(|ring| ring.iter().map(|crds| to_ewkb_point(crds, srid)).collect())
+                .map(|ring| {
+                    ring.iter()
+                        .map(|crds| to_ewkb_point(crds, self.crs))
+                        .collect()
+                })
                 .collect();
             geom.rings = rings;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         }
         Ok(data)
+    }
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        use crate::reproject::{xform_crds, AsCrds};
+        xform_crds(&mut self.as_crds(), xform)
     }
 }
 
@@ -369,40 +543,54 @@ impl GeoJSONEncode for MultiPoint {
     fn has_zm(&self) -> bool {
         !self.coordinates.is_empty() && self.coordinates[0].len() == 4
     }
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error> {
+    fn srid(&self) -> Option<i32> {
+        self.crs
+    }
+    fn set_srid(&mut self, srid: i32) {
+        self.crs = Some(srid);
+    }
+    fn geom_type(&self) -> GeometryType {
+        GeometryType::MultiPoint
+    }
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
         let mut data = vec![];
         if self.has_zm() {
             let mut geom = ewkb::MultiPointZM::new();
             let pnts = self
                 .coordinates
                 .iter()
-                .map(|crds| to_ewkb_pointzm(crds, srid))
+                .map(|crds| to_ewkb_pointzm(crds, self.crs))
                 .collect();
             geom.points = pnts;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else if self.has_z() {
             let mut geom = ewkb::MultiPointZ::new();
             let pnts = self
                 .coordinates
                 .iter()
-                .map(|crds| to_ewkb_pointz(crds, srid))
+                .map(|crds| to_ewkb_pointz(crds, self.crs))
                 .collect();
             geom.points = pnts;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else {
             let mut geom = ewkb::MultiPoint::new();
             let pnts = self
                 .coordinates
                 .iter()
-                .map(|crds| to_ewkb_point(crds, srid))
+                .map(|crds| to_ewkb_point(crds, self.crs))
                 .collect();
             geom.points = pnts;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         }
         Ok(data)
+    }
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        use crate::reproject::{xform_crds, AsCrds};
+        xform_crds(&mut self.as_crds(), xform)
     }
 }
 
@@ -462,8 +650,17 @@ impl GeoJSONEncode for MultiLineString {
             false
         }
     }
+    fn srid(&self) -> Option<i32> {
+        self.crs
+    }
+    fn set_srid(&mut self, srid: i32) {
+        self.crs = Some(srid);
+    }
+    fn geom_type(&self) -> GeometryType {
+        GeometryType::MultiLineString
+    }
 
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error> {
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
         let mut data = Vec::with_capacity(9 + 8 * 3 * self.coordinates.len());
         if self.has_zm() {
             let mut geom = ewkb::MultiLineStringZM::new();
@@ -473,12 +670,12 @@ impl GeoJSONEncode for MultiLineString {
                 .map(|lines| {
                     lines
                         .iter()
-                        .map(|crds| to_ewkb_pointzm(crds, srid))
+                        .map(|crds| to_ewkb_pointzm(crds, self.crs))
                         .collect()
                 })
                 .collect();
             geom.lines = lines;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else if self.has_z() {
             let mut geom = ewkb::MultiLineStringZ::new();
@@ -488,25 +685,35 @@ impl GeoJSONEncode for MultiLineString {
                 .map(|lines| {
                     lines
                         .iter()
-                        .map(|crds| to_ewkb_pointz(crds, srid))
+                        .map(|crds| to_ewkb_pointz(crds, self.crs))
                         .collect()
                 })
                 .collect();
             geom.lines = lines;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else {
             let mut geom = ewkb::MultiLineString::new();
             let lines = self
                 .coordinates
                 .iter()
-                .map(|lines| lines.iter().map(|crds| to_ewkb_point(crds, srid)).collect())
+                .map(|lines| {
+                    lines
+                        .iter()
+                        .map(|crds| to_ewkb_point(crds, self.crs))
+                        .collect()
+                })
                 .collect();
             geom.lines = lines;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         }
         Ok(data)
+    }
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        use crate::reproject::{xform_crds, AsCrds};
+        xform_crds(&mut self.as_crds(), xform)
     }
 }
 
@@ -548,7 +755,16 @@ impl GeoJSONEncode for MultiPolygon {
             false
         }
     }
-    fn to_ewkb(&self, srid: Option<i32>) -> Result<Vec<u8>, Error> {
+    fn srid(&self) -> Option<i32> {
+        self.crs
+    }
+    fn set_srid(&mut self, srid: i32) {
+        self.crs = Some(srid);
+    }
+    fn geom_type(&self) -> GeometryType {
+        GeometryType::MultiPolygon
+    }
+    fn to_ewkb(&self) -> Result<Vec<u8>, Error> {
         let mut data = vec![];
         if self.has_zm() {
             let mut geom = ewkb::MultiPolygonZM::new();
@@ -559,14 +775,14 @@ impl GeoJSONEncode for MultiPolygon {
                     poly.iter()
                         .map(|ring| {
                             ring.iter()
-                                .map(|crds| to_ewkb_pointzm(crds, srid))
+                                .map(|crds| to_ewkb_pointzm(crds, self.crs))
                                 .collect()
                         })
                         .collect()
                 })
                 .collect();
             geom.polygons = polys;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else if self.has_z() {
             let mut geom = ewkb::MultiPolygonZ::new();
@@ -575,12 +791,16 @@ impl GeoJSONEncode for MultiPolygon {
                 .iter()
                 .map(|poly| {
                     poly.iter()
-                        .map(|ring| ring.iter().map(|crds| to_ewkb_pointz(crds, srid)).collect())
+                        .map(|ring| {
+                            ring.iter()
+                                .map(|crds| to_ewkb_pointz(crds, self.crs))
+                                .collect()
+                        })
                         .collect()
                 })
                 .collect();
             geom.polygons = polys;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         } else {
             let mut geom = ewkb::MultiPolygon::new();
@@ -589,15 +809,24 @@ impl GeoJSONEncode for MultiPolygon {
                 .iter()
                 .map(|poly| {
                     poly.iter()
-                        .map(|ring| ring.iter().map(|crds| to_ewkb_point(crds, srid)).collect())
+                        .map(|ring| {
+                            ring.iter()
+                                .map(|crds| to_ewkb_point(crds, self.crs))
+                                .collect()
+                        })
                         .collect()
                 })
                 .collect();
             geom.polygons = polys;
-            geom.srid = srid;
+            geom.srid = self.crs;
             geom.as_ewkb().write_ewkb(&mut data)?;
         }
         Ok(data)
+    }
+    #[cfg(feature = "proj")]
+    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+        use crate::reproject::{xform_crds, AsCrds};
+        xform_crds(&mut self.as_crds(), xform)
     }
 }
 
@@ -678,6 +907,13 @@ mod test {
             .collect::<Vec<_>>()
     }
 
+    #[allow(dead_code)]
+    fn vec_to_hex(vec: &[u8]) -> String {
+        vec.iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect::<String>()
+    }
+
     #[test]
     fn test_ewkb_readwrite_point() {
         let ewkb_data = hex_to_vec("0101000080000000000000f03f00000000000000400000000000001040"); // 3D Point
@@ -691,7 +927,7 @@ mod test {
             format!("{:.0?}", geojson_point.as_str()),
             "\"{\\\"type\\\":\\\"Point\\\",\\\"crs\\\":null,\\\"coordinates\\\":[1.0,2.0,4.0]}\""
         );
-        let encoded = geojson_point.to_ewkb(None).unwrap();
+        let encoded = geojson_point.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -702,14 +938,14 @@ mod test {
         let geojson_line = line.to_geojson();
 
         assert_eq!(
-        format!("{:.0?}", geojson_line),
-        "LineString { type_name: \"LineString\", crs: None, coordinates: [[1, 2, 5], [10, 15, 22]] }"
-    );
+            format!("{:.0?}", geojson_line),
+            "LineString { type_name: \"LineString\", crs: None, coordinates: [[1, 2, 5], [10, 15, 22]] }"
+        );
         assert_eq!(
-        format!("{:.0?}", geojson_line.as_str()),
-        "\"{\\\"type\\\":\\\"LineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[1.0,2.0,5.0],[10.0,15.0,22.0]]}\""
-    );
-        let encoded = geojson_line.to_ewkb(None).unwrap();
+            format!("{:.0?}", geojson_line.as_str()),
+            "\"{\\\"type\\\":\\\"LineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[1.0,2.0,5.0],[10.0,15.0,22.0]]}\""
+        );
+        let encoded = geojson_line.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -720,14 +956,17 @@ mod test {
         let geojson_poly = poly.to_geojson();
 
         assert_eq!(
-        format!("{:.2?}", geojson_poly),
-        "Polygon { type_name: \"Polygon\", crs: Some(4326), coordinates: [[[24.95, 60.32, 3.00], [24.93, 60.31, 3.00], [24.95, 60.31, 3.00], [24.98, 60.31, 3.00], [24.99, 60.32, 3.00], [24.98, 60.33, 3.00], [24.95, 60.32, 3.00]]] }"
-    );
+            format!("{:.2?}", geojson_poly),
+            "Polygon { type_name: \"Polygon\", crs: Some(4326), coordinates: [[[24.95, 60.32, 3.00], [24.93, 60.31, 3.00], [24.95, 60.31, 3.00], [24.98, 60.31, 3.00], [24.99, 60.32, 3.00], [24.98, 60.33, 3.00], [24.95, 60.32, 3.00]]] }"
+        );
         assert_eq!(
-        format!("{:.2?}", geojson_poly.as_str()),
-        "\"{\\\"type\\\":\\\"Polygon\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[24.95,60.32,3.0],[24.93,60.31,3.0],[24.95,60.31,3.0],[24.98,60.31,3.0],[24.99,60.32,3.0],[24.98,60.33,3.0],[24.95,60.32,3.0]]]}\""
-    );
-        let encoded = geojson_poly.to_ewkb(Some(4326)).unwrap();
+            format!("{:.2?}", geojson_poly.as_str()),
+            "\"{\\\"type\\\":\\\"Polygon\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[24.95,60.32,3.0],[24.93,60.31,3.0],[24.95,60.31,3.0],[24.98,60.31,3.0],[24.99,60.32,3.0],[24.98,60.33,3.0],[24.95,60.32,3.0]]]}\""
+        );
+        // geojson_poly.crs = Some(4326);
+        let encoded = geojson_poly.to_ewkb().unwrap();
+        let hex = vec_to_hex(&encoded);
+        eprintln!("{}", hex);
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -737,14 +976,14 @@ mod test {
         let geom = ewkb::MultiPoint::read_ewkb(&mut ewkb_data.as_slice()).unwrap();
         let geojson_geom = geom.to_geojson();
         assert_eq!(
-        format!("{:.1?}", geojson_geom),
-        "MultiPoint { type_name: \"MultiPoint\", crs: None, coordinates: [[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]] }"
-    );
+            format!("{:.1?}", geojson_geom),
+            "MultiPoint { type_name: \"MultiPoint\", crs: None, coordinates: [[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]] }"
+        );
         assert_eq!(
-        format!("{:.1?}", geojson_geom.as_str()),
-        "\"{\\\"type\\\":\\\"MultiPoint\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]]}\""
-    );
-        let encoded = geojson_geom.to_ewkb(None).unwrap();
+            format!("{:.1?}", geojson_geom.as_str()),
+            "\"{\\\"type\\\":\\\"MultiPoint\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]]}\""
+        );
+        let encoded = geojson_geom.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -755,25 +994,25 @@ mod test {
         let geom = ewkb::MultiLineString::read_ewkb(&mut ewkb_data.as_slice()).unwrap();
         let geojson_geom = geom.to_geojson();
         assert_eq!(
-        format!("{:.1?}", geojson_geom),
-        "MultiLineString { type_name: \"MultiLineString\", crs: None, coordinates: [[[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]], [[30.0, 40.0, 0.0], [35.0, 45.0, 5.0]]] }"
-    );
+            format!("{:.1?}", geojson_geom),
+            "MultiLineString { type_name: \"MultiLineString\", crs: None, coordinates: [[[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]], [[30.0, 40.0, 0.0], [35.0, 45.0, 5.0]]] }"
+        );
         assert_eq!(
-        format!("{:.1?}", geojson_geom.as_str()),
-        "\"{\\\"type\\\":\\\"MultiLineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]],[[30.0,40.0,0.0],[35.0,45.0,5.0]]]}\""
-    );
-        let encoded = geojson_geom.to_ewkb(None).unwrap();
+            format!("{:.1?}", geojson_geom.as_str()),
+            "\"{\\\"type\\\":\\\"MultiLineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]],[[30.0,40.0,0.0],[35.0,45.0,5.0]]]}\""
+        );
+        let encoded = geojson_geom.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
     #[test]
-    fn test_tewkb_readwrite_multipolygon() {
+    fn test_twkb_readwrite_multipolygon() {
         let ewkb_data = hex_to_vec("01060000800100000001030000800100000004000000a01a2fdd1e67114191ed7cff238f5941000000000000000052b81e0517671141931804ce228f594100000000000000009cc420b0036711417b14ae1f238f59410000000000000000a01a2fdd1e67114191ed7cff238f59410000000000000000"); // 2D MultiPolygon
         let poly = ewkb::MultiPolygon::read_ewkb(&mut ewkb_data.as_slice()).unwrap();
         let geojson_geom = poly.to_geojson();
         assert_eq!(format!("{:.1?}", geojson_geom), "MultiPolygon { type_name: \"MultiPolygon\", crs: None, coordinates: [[[[285127.7, 6700176.0, 0.0], [285125.8, 6700171.2, 0.0], [285120.9, 6700172.5, 0.0], [285127.7, 6700176.0, 0.0]]]] }");
         assert_eq!(format!("{:.1?}", geojson_geom.as_str()), "\"{\\\"type\\\":\\\"MultiPolygon\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[[285127.716,6700175.992,0.0],[285125.755,6700171.219,0.0],[285120.922,6700172.495,0.0],[285127.716,6700175.992,0.0]]]]}\"");
-        let encoded = geojson_geom.to_ewkb(None).unwrap();
+        let encoded = geojson_geom.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -798,13 +1037,13 @@ mod test {
         let geom = twkb::LineString::read_twkb(&mut twkb.as_slice()).unwrap();
         let geojson_geom = geom.to_geojson();
         assert_eq!(
-        format!("{:.1?}", geojson_geom),
-        "LineString { type_name: \"LineString\", crs: None, coordinates: [[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]] }"
-    );
+            format!("{:.1?}", geojson_geom),
+            "LineString { type_name: \"LineString\", crs: None, coordinates: [[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]] }"
+        );
         assert_eq!(
-        format!("{:.1?}", geojson_geom.as_str()),
-        "\"{\\\"type\\\":\\\"LineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]]}\""
-    );
+            format!("{:.1?}", geojson_geom.as_str()),
+            "\"{\\\"type\\\":\\\"LineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]]}\""
+        );
     }
 
     #[test]
@@ -813,13 +1052,13 @@ mod test {
         let geom = twkb::Polygon::read_twkb(&mut twkb.as_slice()).unwrap();
         let geojson_geom = geom.to_geojson();
         assert_eq!(
-        format!("{:.1?}", geojson_geom),
-        "Polygon { type_name: \"Polygon\", crs: None, coordinates: [[[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0], [10.0, 20.0, 0.0]]] }"
-    );
+            format!("{:.1?}", geojson_geom),
+            "Polygon { type_name: \"Polygon\", crs: None, coordinates: [[[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0], [10.0, 20.0, 0.0]]] }"
+        );
         assert_eq!(
-        format!("{:.1?}", geojson_geom.as_str()),
-        "\"{\\\"type\\\":\\\"Polygon\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0],[10.0,20.0,0.0]]]}\""
-    );
+            format!("{:.1?}", geojson_geom.as_str()),
+            "\"{\\\"type\\\":\\\"Polygon\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0],[10.0,20.0,0.0]]]}\""
+        );
     }
 
     #[test]
@@ -828,13 +1067,13 @@ mod test {
         let geom = twkb::MultiPoint::read_twkb(&mut twkb.as_slice()).unwrap();
         let geojson_geom = geom.to_geojson();
         assert_eq!(
-        format!("{:.1?}", geojson_geom),
-        "MultiPoint { type_name: \"MultiPoint\", crs: None, coordinates: [[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]] }"
-    );
+            format!("{:.1?}", geojson_geom),
+            "MultiPoint { type_name: \"MultiPoint\", crs: None, coordinates: [[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]] }"
+        );
         assert_eq!(
-        format!("{:.1?}", geojson_geom.as_str()),
-        "\"{\\\"type\\\":\\\"MultiPoint\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]]}\""
-    );
+            format!("{:.1?}", geojson_geom.as_str()),
+            "\"{\\\"type\\\":\\\"MultiPoint\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]]}\""
+        );
     }
 
     #[test]
@@ -844,13 +1083,13 @@ mod test {
         let geom = twkb::MultiLineString::read_twkb(&mut twkb.as_slice()).unwrap();
         let geojson_geom = geom.to_geojson();
         assert_eq!(
-        format!("{:.1?}", geojson_geom),
-        "MultiLineString { type_name: \"MultiLineString\", crs: None, coordinates: [[[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]], [[30.0, 40.0, 0.0], [35.0, 45.0, 5.0]]] }"
-    );
+            format!("{:.1?}", geojson_geom),
+            "MultiLineString { type_name: \"MultiLineString\", crs: None, coordinates: [[[10.0, 20.0, 0.0], [15.0, 25.0, 5.0], [20.0, 30.0, 10.0]], [[30.0, 40.0, 0.0], [35.0, 45.0, 5.0]]] }"
+        );
         assert_eq!(
-        format!("{:.1?}", geojson_geom.as_str()),
-        "\"{\\\"type\\\":\\\"MultiLineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]],[[30.0,40.0,0.0],[35.0,45.0,5.0]]]}\""
-    );
+            format!("{:.1?}", geojson_geom.as_str()),
+            "\"{\\\"type\\\":\\\"MultiLineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[[10.0,20.0,0.0],[15.0,25.0,5.0],[20.0,30.0,10.0]],[[30.0,40.0,0.0],[35.0,45.0,5.0]]]}\""
+        );
     }
 
     #[test]
@@ -874,10 +1113,10 @@ mod test {
             "Point { type_name: \"Point\", crs: None, coordinates: [1, 2, 4, 5] }"
         );
         assert_eq!(
-        format!("{:.0?}", geojson_point.as_str()),
-        "\"{\\\"type\\\":\\\"Point\\\",\\\"crs\\\":null,\\\"coordinates\\\":[1.0,2.0,4.0,5.0]}\""
-    );
-        let encoded = geojson_point.to_ewkb(None).unwrap();
+            format!("{:.0?}", geojson_point.as_str()),
+            "\"{\\\"type\\\":\\\"Point\\\",\\\"crs\\\":null,\\\"coordinates\\\":[1.0,2.0,4.0,5.0]}\""
+        );
+        let encoded = geojson_point.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -888,14 +1127,14 @@ mod test {
         let geojson_line = line.to_geojson();
 
         assert_eq!(
-        format!("{:.0?}", geojson_line),
-        "LineString { type_name: \"LineString\", crs: None, coordinates: [[1, 2, 4, 5], [10, 15, 20, 24]] }"
-    );
+            format!("{:.0?}", geojson_line),
+            "LineString { type_name: \"LineString\", crs: None, coordinates: [[1, 2, 4, 5], [10, 15, 20, 24]] }"
+        );
         assert_eq!(
-        format!("{:.0?}", geojson_line.as_str()),
-        "\"{\\\"type\\\":\\\"LineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[1.0,2.0,4.0,5.0],[10.0,15.0,20.0,24.0]]}\""
-    );
-        let encoded = geojson_line.to_ewkb(None).unwrap();
+            format!("{:.0?}", geojson_line.as_str()),
+            "\"{\\\"type\\\":\\\"LineString\\\",\\\"crs\\\":null,\\\"coordinates\\\":[[1.0,2.0,4.0,5.0],[10.0,15.0,20.0,24.0]]}\""
+        );
+        let encoded = geojson_line.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -906,14 +1145,14 @@ mod test {
         let geojson_poly = poly.to_geojson();
 
         assert_eq!(
-        format!("{:.2?}", geojson_poly),
-        "Polygon { type_name: \"Polygon\", crs: Some(4326), coordinates: [[[24.95, 60.32, 3.00, 10.00], [24.93, 60.31, 3.00, 20.00], [24.95, 60.31, 3.00, 30.00], [24.98, 60.31, 3.00, 40.00], [24.99, 60.32, 3.00, 50.00], [24.98, 60.33, 3.00, 60.00], [24.95, 60.32, 3.00, 10.00]]] }"
-    );
+            format!("{:.2?}", geojson_poly),
+            "Polygon { type_name: \"Polygon\", crs: Some(4326), coordinates: [[[24.95, 60.32, 3.00, 10.00], [24.93, 60.31, 3.00, 20.00], [24.95, 60.31, 3.00, 30.00], [24.98, 60.31, 3.00, 40.00], [24.99, 60.32, 3.00, 50.00], [24.98, 60.33, 3.00, 60.00], [24.95, 60.32, 3.00, 10.00]]] }"
+        );
         assert_eq!(
-        format!("{:.2?}", geojson_poly.as_str()),
-        "\"{\\\"type\\\":\\\"Polygon\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[24.95,60.32,3.0,10.0],[24.93,60.31,3.0,20.0],[24.95,60.31,3.0,30.0],[24.98,60.31,3.0,40.0],[24.99,60.32,3.0,50.0],[24.98,60.33,3.0,60.0],[24.95,60.32,3.0,10.0]]]}\""
-    );
-        let encoded = geojson_poly.to_ewkb(Some(4326)).unwrap();
+            format!("{:.2?}", geojson_poly.as_str()),
+            "\"{\\\"type\\\":\\\"Polygon\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[24.95,60.32,3.0,10.0],[24.93,60.31,3.0,20.0],[24.95,60.31,3.0,30.0],[24.98,60.31,3.0,40.0],[24.99,60.32,3.0,50.0],[24.98,60.33,3.0,60.0],[24.95,60.32,3.0,10.0]]]}\""
+        );
+        let encoded = geojson_poly.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -924,14 +1163,14 @@ mod test {
         let geojson_poly = multipoint.to_geojson();
 
         assert_eq!(
-        format!("{:.2?}", geojson_poly),
-        "MultiPoint { type_name: \"MultiPoint\", crs: Some(4326), coordinates: [[10.00, 20.00, 0.00, 5.00], [15.00, 25.00, 5.00, 10.00], [20.00, 30.00, 10.00, 15.00]] }"
-    );
+            format!("{:.2?}", geojson_poly),
+            "MultiPoint { type_name: \"MultiPoint\", crs: Some(4326), coordinates: [[10.00, 20.00, 0.00, 5.00], [15.00, 25.00, 5.00, 10.00], [20.00, 30.00, 10.00, 15.00]] }"
+        );
         assert_eq!(
-        format!("{:.2?}", geojson_poly.as_str()),
-        "\"{\\\"type\\\":\\\"MultiPoint\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[10.0,20.0,0.0,5.0],[15.0,25.0,5.0,10.0],[20.0,30.0,10.0,15.0]]}\""
-    );
-        let encoded = geojson_poly.to_ewkb(Some(4326)).unwrap();
+            format!("{:.2?}", geojson_poly.as_str()),
+            "\"{\\\"type\\\":\\\"MultiPoint\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[10.0,20.0,0.0,5.0],[15.0,25.0,5.0,10.0],[20.0,30.0,10.0,15.0]]}\""
+        );
+        let encoded = geojson_poly.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -942,14 +1181,14 @@ mod test {
         let geojson_multiline = multiline.to_geojson();
 
         assert_eq!(
-        format!("{:.2?}", geojson_multiline),
-        "MultiLineString { type_name: \"MultiLineString\", crs: Some(4326), coordinates: [[[10.00, 20.00, 0.00, 5.00], [15.00, 25.00, 5.00, 10.00]], [[20.00, 30.00, 10.00, 15.00], [25.00, 35.00, 15.00, 20.00]]] }"
-    );
+            format!("{:.2?}", geojson_multiline),
+            "MultiLineString { type_name: \"MultiLineString\", crs: Some(4326), coordinates: [[[10.00, 20.00, 0.00, 5.00], [15.00, 25.00, 5.00, 10.00]], [[20.00, 30.00, 10.00, 15.00], [25.00, 35.00, 15.00, 20.00]]] }"
+        );
         assert_eq!(
-        format!("{:.2?}", geojson_multiline.as_str()),
-        "\"{\\\"type\\\":\\\"MultiLineString\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[10.0,20.0,0.0,5.0],[15.0,25.0,5.0,10.0]],[[20.0,30.0,10.0,15.0],[25.0,35.0,15.0,20.0]]]}\""
-    );
-        let encoded = geojson_multiline.to_ewkb(Some(4326)).unwrap();
+            format!("{:.2?}", geojson_multiline.as_str()),
+            "\"{\\\"type\\\":\\\"MultiLineString\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[10.0,20.0,0.0,5.0],[15.0,25.0,5.0,10.0]],[[20.0,30.0,10.0,15.0],[25.0,35.0,15.0,20.0]]]}\""
+        );
+        let encoded = geojson_multiline.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 
@@ -958,16 +1197,15 @@ mod test {
         let ewkb_data = hex_to_vec("01060000e0e61000000200000001030000c0010000000400000000000000000024400000000000003440000000000000000000000000000014400000000000002e4000000000000039400000000000001440000000000000244000000000000034400000000000003e4000000000000024400000000000002e40000000000000244000000000000034400000000000000000000000000000144001030000c0010000000400000000000000000034400000000000003e4000000000000024400000000000002e40000000000000394000000000008041400000000000002e4000000000000034400000000000003e4000000000000044400000000000003440000000000000394000000000000034400000000000003e4000000000000024400000000000002e40"); // ZM MultiPolygon
         let multipolygon = ewkb::MultiPolygon::read_ewkb(&mut ewkb_data.as_slice()).unwrap();
         let geojson_multipolygon = multipolygon.to_geojson();
-
         assert_eq!(
-        format!("{:.2?}", geojson_multipolygon),
-        "MultiPolygon { type_name: \"MultiPolygon\", crs: Some(4326), coordinates: [[[[10.00, 20.00, 0.00, 5.00], [15.00, 25.00, 5.00, 10.00], [20.00, 30.00, 10.00, 15.00], [10.00, 20.00, 0.00, 5.00]]], [[[20.00, 30.00, 10.00, 15.00], [25.00, 35.00, 15.00, 20.00], [30.00, 40.00, 20.00, 25.00], [20.00, 30.00, 10.00, 15.00]]]] }"
-    );
+            format!("{:.2?}", geojson_multipolygon),
+            "MultiPolygon { type_name: \"MultiPolygon\", crs: Some(4326), coordinates: [[[[10.00, 20.00, 0.00, 5.00], [15.00, 25.00, 5.00, 10.00], [20.00, 30.00, 10.00, 15.00], [10.00, 20.00, 0.00, 5.00]]], [[[20.00, 30.00, 10.00, 15.00], [25.00, 35.00, 15.00, 20.00], [30.00, 40.00, 20.00, 25.00], [20.00, 30.00, 10.00, 15.00]]]] }"
+        );
         assert_eq!(
-        format!("{:.2?}", geojson_multipolygon.as_str()),
-        "\"{\\\"type\\\":\\\"MultiPolygon\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[[10.0,20.0,0.0,5.0],[15.0,25.0,5.0,10.0],[20.0,30.0,10.0,15.0],[10.0,20.0,0.0,5.0]]],[[[20.0,30.0,10.0,15.0],[25.0,35.0,15.0,20.0],[30.0,40.0,20.0,25.0],[20.0,30.0,10.0,15.0]]]]}\""
-    );
-        let encoded = geojson_multipolygon.to_ewkb(Some(4326)).unwrap();
+            format!("{:.2?}", geojson_multipolygon.as_str()),
+            "\"{\\\"type\\\":\\\"MultiPolygon\\\",\\\"crs\\\":{\\\"type\\\":\\\"name\\\",\\\"properties\\\":{\\\"name\\\":\\\"EPSG:4326\\\"}},\\\"coordinates\\\":[[[[10.0,20.0,0.0,5.0],[15.0,25.0,5.0,10.0],[20.0,30.0,10.0,15.0],[10.0,20.0,0.0,5.0]]],[[[20.0,30.0,10.0,15.0],[25.0,35.0,15.0,20.0],[30.0,40.0,20.0,25.0],[20.0,30.0,10.0,15.0]]]]}\""
+        );
+        let encoded = geojson_multipolygon.to_ewkb().unwrap();
         assert_eq!(encoded, ewkb_data);
     }
 }

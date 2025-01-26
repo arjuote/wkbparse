@@ -11,6 +11,7 @@ RUN maturin build --all-features
 
 FROM base as test
 
+
 COPY ./tox.ini /wkbparse/
 RUN pip3 install tox && chmod +x /wkbparse/scripts/test.sh
 ENTRYPOINT [ "/bin/bash", "/wkbparse/scripts/test.sh" ]
