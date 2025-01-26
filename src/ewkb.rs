@@ -453,14 +453,14 @@ pub trait AsEwkbPoint<'a> {
     fn as_ewkb(&'a self) -> EwkbPoint<'a>;
 }
 
-impl<'a> fmt::Debug for EwkbPoint<'a> {
+impl fmt::Debug for EwkbPoint<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "EwkbPoint")?; //TODO
         Ok(())
     }
 }
 
-impl<'a> EwkbWrite for EwkbPoint<'a> {
+impl EwkbWrite for EwkbPoint<'_> {
     fn type_id(&self) -> u32 {
         0x01 | Self::wkb_type_id(&self.point_type, self.srid)
     }
