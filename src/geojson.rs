@@ -297,21 +297,21 @@ pub struct LineString {
 
 impl GeoJSONLineString for twkb::LineString {
     fn to_geojson(&self) -> LineString {
-        return LineString {
+        LineString {
             type_name: "LineString".to_owned(),
             crs: None,
             coordinates: self.points().map(|x| x.crds()).collect(),
-        };
+        }
     }
 }
 
 impl GeoJSONLineString for ewkb::LineString {
     fn to_geojson(&self) -> LineString {
-        return LineString {
+        LineString {
             type_name: "LineString".to_owned(),
             crs: self.srid,
             coordinates: self.points().map(|x| x.crds()).collect(),
-        };
+        }
     }
 }
 
@@ -472,8 +472,7 @@ impl GeoJSONEncode for Polygon {
 
 impl GeoJSONPolygon for twkb::Polygon {
     fn to_geojson(&self) -> Polygon {
-        let mut rings: Vec<Vec<Vec<f64>>> = Vec::new();
-        rings.reserve(self.rings().len());
+        let mut rings: Vec<Vec<Vec<f64>>> = Vec::with_capacity(self.rings().len());
         for ring in &self.rings {
             let crds = &ring.points;
             let crds_vec: Vec<Vec<f64>> = crds.iter().map(|crd| crd.crds()).collect();
@@ -604,7 +603,7 @@ pub struct MultiLineString {
 }
 impl GeoJSONMultiLineString for twkb::MultiLineString {
     fn to_geojson(&self) -> MultiLineString {
-        return MultiLineString {
+        MultiLineString {
             type_name: "MultiLineString".to_owned(),
             crs: None,
             coordinates: self
@@ -612,13 +611,13 @@ impl GeoJSONMultiLineString for twkb::MultiLineString {
                 .iter()
                 .map(|line| line.points.iter().map(|pnt| pnt.crds()).collect())
                 .collect(),
-        };
+        }
     }
 }
 
 impl GeoJSONMultiLineString for ewkb::MultiLineString {
     fn to_geojson(&self) -> MultiLineString {
-        return MultiLineString {
+        MultiLineString {
             type_name: "MultiLineString".to_owned(),
             crs: self.srid,
             coordinates: self
@@ -626,7 +625,7 @@ impl GeoJSONMultiLineString for ewkb::MultiLineString {
                 .iter()
                 .map(|line| line.points.iter().map(|pnt| pnt.crds()).collect())
                 .collect(),
-        };
+        }
     }
 }
 
@@ -832,11 +831,9 @@ impl GeoJSONEncode for MultiPolygon {
 
 impl GeoJSONMultiPolygon for twkb::MultiPolygon {
     fn to_geojson(&self) -> MultiPolygon {
-        let mut polygons: Vec<Vec<Vec<Vec<f64>>>> = Vec::new();
-        polygons.reserve(self.polygons().len());
+        let mut polygons: Vec<Vec<Vec<Vec<f64>>>> = Vec::with_capacity(self.polygons().len());
         for polygon in &self.polygons {
-            let mut poly_crds = Vec::new();
-            poly_crds.reserve(polygon.rings.len());
+            let mut poly_crds = Vec::with_capacity(polygon.rings.len());
             for ring in polygon.rings() {
                 let crds = &ring.points;
                 let crds_vec: Vec<Vec<f64>> = crds.iter().map(|crd| crd.crds()).collect();
@@ -855,11 +852,9 @@ impl GeoJSONMultiPolygon for twkb::MultiPolygon {
 
 impl GeoJSONMultiPolygon for ewkb::MultiPolygon {
     fn to_geojson(&self) -> MultiPolygon {
-        let mut polygons: Vec<Vec<Vec<Vec<f64>>>> = Vec::new();
-        polygons.reserve(self.polygons().len());
+        let mut polygons: Vec<Vec<Vec<Vec<f64>>>> = Vec::with_capacity(self.polygons().len());
         for polygon in &self.polygons {
-            let mut poly_crds = Vec::new();
-            poly_crds.reserve(polygon.rings.len());
+            let mut poly_crds = Vec::with_capacity(polygon.rings.len());
             for ring in polygon.rings() {
                 let crds = &ring.points;
                 let crds_vec: Vec<Vec<f64>> = crds.iter().map(|crd| crd.crds()).collect();

@@ -499,15 +499,13 @@ mod reproject {
         let from_srid = {
             if let Some(from_srid) = from_srid {
                 format!("EPSG:{}", from_srid)
+            } else if let Some(srid) = geom.srid() {
+                format!("EPSG:{}", srid)
             } else {
-                if let Some(srid) = geom.srid() {
-                    format!("EPSG:{}", srid)
-                } else {
-                    return Err(Error::Other(
-                        "from_srid not provided and data does not have srid".to_string(),
-                    )
-                    .into());
-                }
+                return Err(Error::Other(
+                    "from_srid not provided and data does not have srid".to_string(),
+                )
+                .into());
             }
         };
         let xform = Proj::new_known_crs(from_srid.as_str(), &format!("EPSG:{}", to_srid), None)
