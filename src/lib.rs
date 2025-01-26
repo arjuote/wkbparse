@@ -5,4 +5,6 @@ pub mod ewkb;
 pub mod geojson;
 #[cfg(feature = "python")]
 mod pyo;
+#[cfg(feature = "proj")]
+mod reproject;
 pub mod twkb;
