@@ -12,7 +12,6 @@ use std::f64;
 use std::fmt;
 use std::io::prelude::*;
 use std::slice::Iter;
-use std::u8;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct Point {
@@ -170,8 +169,7 @@ pub trait TwkbGeom: fmt::Debug + Sized {
     }
 
     fn read_idlist<R: Read>(raw: &mut R, size: usize) -> Result<Vec<u64>, Error> {
-        let mut idlist = Vec::new();
-        idlist.reserve(size);
+        let mut idlist = Vec::with_capacity(size);
         for _ in 0..size {
             let id = read_raw_varint64(raw)?;
             idlist.push(id);

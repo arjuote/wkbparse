@@ -21,7 +21,7 @@ pub fn xform_crds(crds: &mut [Crd], xform: Proj) -> Result<(), Error> {
     Ok(())
 }
 
-impl<'a> Coord<f64> for &mut Crd<'a> {
+impl Coord<f64> for &mut Crd<'_> {
     fn x(&self) -> f64 {
         self.0[0]
     }
@@ -47,10 +47,7 @@ impl<'a> AsCrds<'a> for Point {
 
 impl<'a> AsCrds<'a> for LineString {
     fn as_crds(&'a mut self) -> Vec<Crd<'a>> {
-        self.coordinates
-            .iter_mut()
-            .map(|p| Crd(p.as_mut()))
-            .collect::<Vec<Crd>>()
+        self.coordinates.iter_mut().map(Crd).collect::<Vec<Crd>>()
     }
 }
 
@@ -58,16 +55,13 @@ impl<'a> AsCrds<'a> for Polygon {
     fn as_crds(&'a mut self) -> Vec<Crd<'a>> {
         self.coordinates
             .iter_mut()
-            .flat_map(|ring| ring.iter_mut().map(|p| Crd(p.as_mut())))
+            .flat_map(|ring| ring.iter_mut().map(Crd))
             .collect::<Vec<Crd>>()
     }
 }
 impl<'a> AsCrds<'a> for MultiPoint {
     fn as_crds(&'a mut self) -> Vec<Crd<'a>> {
-        self.coordinates
-            .iter_mut()
-            .map(|p| Crd(p.as_mut()))
-            .collect::<Vec<Crd>>()
+        self.coordinates.iter_mut().map(Crd).collect::<Vec<Crd>>()
     }
 }
 
@@ -75,7 +69,7 @@ impl<'a> AsCrds<'a> for MultiLineString {
     fn as_crds(&'a mut self) -> Vec<Crd<'a>> {
         self.coordinates
             .iter_mut()
-            .flat_map(|line| line.iter_mut().map(|p| Crd(p.as_mut())))
+            .flat_map(|line| line.iter_mut().map(Crd))
             .collect::<Vec<Crd>>()
     }
 }
@@ -84,11 +78,7 @@ impl<'a> AsCrds<'a> for MultiPolygon {
     fn as_crds(&'a mut self) -> Vec<Crd<'a>> {
         self.coordinates
             .iter_mut()
-            .flat_map(|polygon| {
-                polygon
-                    .iter_mut()
-                    .flat_map(|ring| ring.iter_mut().map(|p| Crd(p.as_mut())))
-            })
+            .flat_map(|polygon| polygon.iter_mut().flat_map(|ring| ring.iter_mut().map(Crd)))
             .collect::<Vec<Crd>>()
     }
 }
