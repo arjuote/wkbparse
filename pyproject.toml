@@ -1,7 +1,7 @@
 [project]
 name = "wkbparse"
 description = "EWKB and TWKB parsing and conversion to GeoJSON"
-version = "0.1.2"
+version = "0.2.0"
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -16,6 +16,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License"
 ]
 urls = { Source = "https://github.com/arjuote/wkbparse" }
+
 [build-system]
 requires = ["maturin>=1.1,<2.0"]
 build-backend = "maturin"
@@ -25,7 +26,7 @@ features = ["pyo3/extension-module"]
 
 [tool.poetry]
 name = "wkbparse"
-version = "0.1.2"
+version = "0.2.0"
 description = "EWKB and TWKB parsing and conversion to GeoJSON"
 authors = ["Arsi Juote <arsi.juote@gmail.com>"]
 license = "MIT"

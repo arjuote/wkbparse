@@ -2,8 +2,6 @@
 //  Author      : ShuYu Wang <andelf@gmail.com>
 //  Created     : Wed May 27 01:45:41 2015 by ShuYu Wang
 //  Copyright   : Feather Workshop (c) 2015
-//  Description : PostGIS helper
-//  Time-stamp: <2015-06-13 19:21:08 andelf>
 
 use std;
 use std::fmt;
@@ -24,9 +22,9 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::Read(_) => "postgis error while reading",
-            Error::Write(_) => "postgis error while writing",
-            Error::Other(_) => "postgis unknown error",
+            Error::Read(_) => "error while reading",
+            Error::Write(_) => "error while writing",
+            Error::Other(_) => "unknown error",
         }
     }
 }

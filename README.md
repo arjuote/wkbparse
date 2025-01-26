@@ -28,6 +28,20 @@ Supported python version is >=3.8.
 
 Tested on Python versions 3.8, 3.9, 3.10, 3.11 on Linux x86_64.
 
+## Reprojection
+
+Install `wkbparse-proj` instead of `wkbparse` to enable coordinate reprojection using the [Proj](https://github.com/OSGeo/PROJ) project.
+
+Using the reprojection-enabled package allows one to pass in `from_srid` and `to_srid` as integers corresponding to EPSG-codes to many of the functions. The `from_srid` argument may be omitted if the source EWKB bytes or GeoJSON-dictionary data already contains the SRID. TWKB data never contains the SRID.
+
+Pre-installed proj library must be present on the system for this feature to work. See [Proj installation](https://proj.org/en/stable/install.html).
+
+Using `wkbparse-proj` bumps up the package size from ~250 kilobytes to ~10 megabytes due to rather large size of the Proj C++-dependency.
+
+NOTE: Separate package is used instead of python "extras" within a single package due to extras not interacting nicely with wheels built with different Rust feature flags. This approach allows us to have a single codebase and a surefire way of selecting the appropriate package to avoid downloading redundant large dependencies.
+
+`wbkparse-proj` pre-built wheels are only shipped for major Linux x86_64 platforms and MacOS.
+
 ## Usage
 
 This module implements the following functionalities:
@@ -36,6 +50,7 @@ This module implements the following functionalities:
 - TWKB to EWKB: `twkb_to_ewkb`
 - EWKB to GeoJSON dictionary: `ewkb_to_geojson`
 - GeoJSON dictionary to EWKB: `geojson_to_ewkb`
+- Reproject geojson `reproject_geojson` (only with `wkbparse-proj`)
 
 The following is not currently implemented:
 
@@ -52,7 +67,7 @@ geometry = wkbparse.twkb_to_geojson(twkb_bytes)
 print(geometry)
 ```
 
-The resulting dict looks like:
+The result dict has the following shape:
 
 ```
 {
@@ -62,15 +77,39 @@ The resulting dict looks like:
 }
 ```
 
-When serializing to GeoJSON strings directly, the `crs` is instead expressed as dictated by the GeoJSON spec using a nested dict, e.g.:
+E.g.
 
+```python
+{'type': 'Point', 'crs': None, 'coordinates': [1.0, 2.0, 4.0]}
 ```
-{
-  "crs": {
-    "type": "name",
-    "properties": {
-      "name": "EPSG:4326" # The number is the SRID integer above
-    }
-  }
-}
+
+To reproject data when using `wkbparse-proj` we can additionally pass in `from_srid` and `to_srid`
+
+```python
+import wkbparse
+
+twkb_bytes = bytes.fromhex("610805d00fa01f50")
+geometry = wkbparse.twkb_to_geojson(twkb_bytes, from_srid=4326, to_srid=3857)
+print(geometry)
 ```
+
+```python
+{'type': 'Point', 'crs': 3857, 'coordinates': [111319.49079327357, 222684.20850554405, 4.0]}
+```
+
+If we already have a dictionary as above, we can reproject it with `reproject_geojson`:
+
+```python
+import wkbparse
+
+d = {"type": "Point", "crs": 3857, "coordinates": [111319.49079327357, 222684.20850554405, 4.0]}
+
+reprojected = wkbparse.reproject_geojson(d, to_srid=4326)
+print(reprojected)
+```
+
+```python
+{'type': 'Point', 'crs': 4326, 'coordinates': [0.9999999999999998, 1.9999999999999996, 4.0]}
+```
+
+Note that `from_srid` was omitted in this case as the input geometry already had the `crs` field. One may provide it anyway to override the crs.
