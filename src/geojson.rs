@@ -120,7 +120,7 @@ impl GeoJSONEncode for GeoJSONGeometry {
     }
 
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         match self {
             GeoJSONGeometry::Point(g) => g.transform(xform),
             GeoJSONGeometry::LineString(g) => g.transform(xform),
@@ -179,7 +179,7 @@ pub trait GeoJSONEncode: Send + Sync {
     fn set_srid(&mut self, srid: i32);
     fn geom_type(&self) -> GeometryType;
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error>;
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error>;
 }
 
 #[derive(Serialize)]
@@ -260,9 +260,9 @@ impl GeoJSONEncode for Point {
     }
 
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         use crate::reproject::{xform_crds, AsCrds};
-        xform_crds(&mut self.as_crds(), xform)
+        xform_crds(&mut self.as_crds(), &xform)
     }
 }
 
@@ -372,9 +372,9 @@ impl GeoJSONEncode for LineString {
         Ok(data)
     }
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         use crate::reproject::{xform_crds, AsCrds};
-        xform_crds(&mut self.as_crds(), xform)
+        xform_crds(&mut self.as_crds(), &xform)
     }
 }
 
@@ -464,9 +464,9 @@ impl GeoJSONEncode for Polygon {
         Ok(data)
     }
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         use crate::reproject::{xform_crds, AsCrds};
-        xform_crds(&mut self.as_crds(), xform)
+        xform_crds(&mut self.as_crds(), &xform)
     }
 }
 
@@ -587,9 +587,9 @@ impl GeoJSONEncode for MultiPoint {
         Ok(data)
     }
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         use crate::reproject::{xform_crds, AsCrds};
-        xform_crds(&mut self.as_crds(), xform)
+        xform_crds(&mut self.as_crds(), &xform)
     }
 }
 
@@ -710,9 +710,9 @@ impl GeoJSONEncode for MultiLineString {
         Ok(data)
     }
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         use crate::reproject::{xform_crds, AsCrds};
-        xform_crds(&mut self.as_crds(), xform)
+        xform_crds(&mut self.as_crds(), &xform)
     }
 }
 
@@ -823,9 +823,9 @@ impl GeoJSONEncode for MultiPolygon {
         Ok(data)
     }
     #[cfg(feature = "proj")]
-    fn transform(&mut self, xform: proj::Proj) -> Result<(), Error> {
+    fn transform(&mut self, xform: &proj::Proj) -> Result<(), Error> {
         use crate::reproject::{xform_crds, AsCrds};
-        xform_crds(&mut self.as_crds(), xform)
+        xform_crds(&mut self.as_crds(), &xform)
     }
 }
 
