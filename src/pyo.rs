@@ -238,7 +238,7 @@ fn twkb_to_geojson<'a>(
 
     #[cfg(feature = "proj")]
     {
-        use self::proj::Proj;
+        use crate::reproject::get_transform;
         match (from_srid, to_srid) {
             (None, None) => (),
             (None, Some(_)) => {
@@ -248,15 +248,9 @@ fn twkb_to_geojson<'a>(
                 return Err(error::Error::Other("missing to_srid".to_string()).into())
             }
             (Some(from_srid), Some(to_srid)) => {
-                let xform = Proj::new_known_crs(
-                    &format!("EPSG:{}", from_srid),
-                    &format!("EPSG:{}", to_srid),
-                    None,
-                )
-                .map_err(|err| {
-                    error::Error::Other(format!("failed to create transform: {}", err))
-                })?;
-                geojson_geom.transform(xform)?;
+                let xform = get_transform(from_srid, to_srid)?;
+
+                geojson_geom.transform(&xform)?;
                 geojson_geom.set_srid(to_srid);
             }
         };
@@ -291,7 +285,7 @@ fn ewkb_to_geojson<'a>(
 
     #[cfg(feature = "proj")]
     {
-        use self::proj::Proj;
+        use crate::reproject::get_transform;
 
         let from_srid = {
             if to_srid.is_some() {
@@ -314,15 +308,9 @@ fn ewkb_to_geojson<'a>(
                 return Err(error::Error::Other("missing to_srid".to_string()).into())
             }
             (Some(from_srid), Some(to_srid)) => {
-                let xform = Proj::new_known_crs(
-                    &format!("EPSG:{}", from_srid),
-                    &format!("EPSG:{}", to_srid),
-                    None,
-                )
-                .map_err(|err| {
-                    error::Error::Other(format!("failed to create transform: {}", err))
-                })?;
-                geojson_geom.transform(xform)?;
+                let xform = get_transform(from_srid, to_srid)?;
+
+                geojson_geom.transform(&xform)?;
                 geojson_geom.set_srid(to_srid);
             }
         };
@@ -364,7 +352,7 @@ fn geojson_to_ewkb<'a>(
 
     #[cfg(feature = "proj")]
     {
-        use self::proj::Proj;
+        use crate::reproject::get_transform;
 
         let from_srid = {
             if to_srid.is_some() {
@@ -387,15 +375,9 @@ fn geojson_to_ewkb<'a>(
                 return Err(error::Error::Other("missing to_srid".to_string()).into())
             }
             (Some(from_srid), Some(to_srid)) => {
-                let xform = Proj::new_known_crs(
-                    &format!("EPSG:{}", from_srid),
-                    &format!("EPSG:{}", to_srid),
-                    None,
-                )
-                .map_err(|err| {
-                    error::Error::Other(format!("failed to create transform: {}", err))
-                })?;
-                geom.transform(xform)?
+                let xform = get_transform(from_srid, to_srid)?;
+
+                geom.transform(&xform)?
             }
         };
     }
@@ -477,12 +459,11 @@ fn twkb_to_ewkb<'a>(py: Python<'a>, mut data: &[u8]) -> PyResult<&'a PyBytes> {
 
 #[cfg(all(feature = "proj", feature = "python", feature = "extension-module"))]
 mod reproject {
-    extern crate proj;
-    use self::proj::Proj;
     use super::geojson_to_pydict;
     use crate::error::Error;
     use crate::geojson::GeoJSONEncode;
     use crate::pyo::pydict_to_geojson;
+    use crate::reproject::get_transform;
     use pyo::pyo3::pyfunction;
     use pyo::pyo3::types::PyDict;
     use pyo::pyo3::Python;
@@ -498,9 +479,9 @@ mod reproject {
         let mut geom = pydict_to_geojson(data)?;
         let from_srid = {
             if let Some(from_srid) = from_srid {
-                format!("EPSG:{}", from_srid)
+                from_srid
             } else if let Some(srid) = geom.srid() {
-                format!("EPSG:{}", srid)
+                srid
             } else {
                 return Err(Error::Other(
                     "from_srid not provided and data does not have srid".to_string(),
@@ -508,9 +489,8 @@ mod reproject {
                 .into());
             }
         };
-        let xform = Proj::new_known_crs(from_srid.as_str(), &format!("EPSG:{}", to_srid), None)
-            .map_err(|err| Error::Other(format!("failed to create transform: {}", err)))?;
-        geom.transform(xform)?;
+        let xform = get_transform(from_srid, to_srid)?;
+        geom.transform(&xform)?;
         geom.set_srid(to_srid);
         geojson_to_pydict(py, &geom)
     }

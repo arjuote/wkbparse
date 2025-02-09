@@ -17,6 +17,20 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a Ch
 ### Breaks
 
 
+## 0.2.1 - (2025-02-09)
+---
+
+### Changes
+* Proj transform objects are now reused between python calls in order to cut down the rather large overhead of creating one
+
+
+## 0.2.0 - (2025-01-27)
+
+### New
+* Added reprojection support with proj behind `proj` feature flag
+* Publish separate package wkbparse-proj with the reprojection feature enabled
+
+
 ## 0.1.1 - (2024-10-28)
 ---
 

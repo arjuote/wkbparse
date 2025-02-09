@@ -1,4 +1,6 @@
+extern crate dashmap;
 extern crate proj;
+use self::dashmap::DashMap;
 use self::proj::Coord;
 use self::proj::Proj;
 use crate::error::Error;
@@ -7,10 +9,48 @@ use crate::geojson::MultiPoint;
 use crate::geojson::MultiPolygon;
 use crate::geojson::Polygon;
 use crate::geojson::{LineString, Point};
+use std::cell::RefCell;
+use std::sync::Arc;
 
 pub struct Crd<'a>(&'a mut Vec<f64>);
 
-pub fn xform_crds(crds: &mut [Crd], xform: Proj) -> Result<(), Error> {
+thread_local! {
+    static REPROJECTIONS: RefCell<DashMap<(i32, i32), Arc<Proj>>> = RefCell::new(DashMap::new());
+}
+
+pub fn get_transform(from_srid: i32, to_srid: i32) -> Result<Arc<Proj>, Error> {
+    if let Ok(xform) = REPROJECTIONS.with(|reprojections| {
+        if let Some(res) = reprojections.borrow().get(&(from_srid, to_srid)) {
+            Ok(res.value().clone())
+        } else {
+            Err(Error::Other(format!("failed to retrieve transform")))
+        }
+    }) {
+        return Ok(xform);
+    };
+
+    let xform = Proj::new_known_crs(
+        &format!("EPSG:{}", from_srid),
+        &format!("EPSG:{}", to_srid),
+        None,
+    )
+    .map_err(|err| Error::Other(format!("failed to create transform: {}", err)))?;
+    REPROJECTIONS.with(|reprojections| {
+        reprojections
+            .borrow_mut()
+            .insert((from_srid, to_srid), Arc::new(xform));
+    });
+
+    REPROJECTIONS.with(|reprojections| {
+        if let Some(res) = reprojections.borrow().get(&(from_srid, to_srid)) {
+            Ok(res.value().clone())
+        } else {
+            Err(Error::Other(format!("failed to retrieve transform")))
+        }
+    })
+}
+
+pub fn xform_crds(crds: &mut [Crd], xform: &Proj) -> Result<(), Error> {
     for crd in crds {
         let res = xform
             .convert((crd.0[0], crd.0[1]))
@@ -87,7 +127,7 @@ impl<'a> AsCrds<'a> for MultiPolygon {
 mod test {
     extern crate approx;
     use self::approx::assert_relative_eq;
-    use super::proj::Proj;
+    use super::get_transform;
     use crate::geojson::{LineString, MultiLineString, MultiPoint, MultiPolygon, Polygon};
 
     use super::{xform_crds, AsCrds};
@@ -102,9 +142,9 @@ mod test {
             type_name: "LineString".to_string(),
             crs: None,
         };
-        let xform = Proj::new_known_crs("EPSG:4326", "EPSG:3067", None).unwrap();
+        let xform = get_transform(4326, 3067).unwrap();
         let mut crds = ls.as_crds();
-        xform_crds(&mut crds, xform).unwrap();
+        xform_crds(&mut crds, &xform).unwrap();
 
         let expected = [
             [388351.126, 6689893.389],
@@ -140,9 +180,9 @@ mod test {
             crs: None,
         };
 
-        let xform = Proj::new_known_crs("EPSG:4326", "EPSG:3067", None).unwrap();
+        let xform = get_transform(4326, 3067).unwrap();
         let mut crds = polygon.as_crds();
-        xform_crds(&mut crds, xform).unwrap();
+        xform_crds(&mut crds, &xform).unwrap();
 
         let expected = [
             [
@@ -180,9 +220,10 @@ mod test {
             crs: None,
         };
 
-        let xform = Proj::new_known_crs("EPSG:4326", "EPSG:3067", None).unwrap();
+        let xform = get_transform(4326, 3067).unwrap();
+
         let mut crds = multipoint.as_crds();
-        xform_crds(&mut crds, xform).unwrap();
+        xform_crds(&mut crds, &xform).unwrap();
 
         let expected = [
             [388351.126, 6689893.389],
@@ -208,9 +249,10 @@ mod test {
             crs: None,
         };
 
-        let xform = Proj::new_known_crs("EPSG:4326", "EPSG:3067", None).unwrap();
+        let xform = get_transform(4326, 3067).unwrap();
+
         let mut crds = multilinestring.as_crds();
-        xform_crds(&mut crds, xform).unwrap();
+        xform_crds(&mut crds, &xform).unwrap();
 
         let expected = [
             [[388351.126, 6689893.389], [386677.069, 6688515.295]],
@@ -247,9 +289,10 @@ mod test {
             crs: None,
         };
 
-        let xform = Proj::new_known_crs("EPSG:4326", "EPSG:3067", None).unwrap();
+        let xform = get_transform(4326, 3067).unwrap();
+
         let mut crds = multipolygon.as_crds();
-        xform_crds(&mut crds, xform).unwrap();
+        xform_crds(&mut crds, &xform).unwrap();
 
         let expected = [
             [[
