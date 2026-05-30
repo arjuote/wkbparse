@@ -3,9 +3,7 @@
 //
 #![allow(clippy::redundant_field_names)]
 
-extern crate byteorder;
-
-use self::byteorder::ReadBytesExt;
+use byteorder::ReadBytesExt;
 use crate::geojson::GeometryType;
 use crate::{error::Error, ewkb, types as postgis};
 use std::f64;
@@ -614,7 +612,7 @@ impl<'a> ewkb::AsEwkbMultiPolygon<'a> for MultiPolygon {
 }
 
 #[cfg(test)]
-use ewkb::{
+use crate::ewkb::{
     AsEwkbLineString, AsEwkbMultiLineString, AsEwkbMultiPoint, AsEwkbMultiPolygon, AsEwkbPoint,
     AsEwkbPolygon, EwkbWrite,
 };

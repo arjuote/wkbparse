@@ -1,24 +1,21 @@
 // GeoJSON structs
-extern crate serde;
-extern crate serde_json;
-
 use std::fmt::Display;
 
-use error::Error;
-use ewkb;
-use ewkb::AsEwkbPoint;
-use ewkb::*;
-use ewkb::{
+use crate::error::Error;
+use crate::ewkb;
+use crate::ewkb::AsEwkbPoint;
+use crate::ewkb::*;
+use crate::ewkb::{
     AsEwkbLineString, AsEwkbMultiLineString, AsEwkbMultiPoint, AsEwkbMultiPolygon, AsEwkbPolygon,
 };
-use twkb;
-use types::{
+use crate::twkb;
+use crate::types::{
     LineString as LineStringTrait, MultiPolygon as MultiPolygonTrait, Point as PointTrait,
     Polygon as PolygonTrait,
 };
 
-use self::serde::ser::{SerializeStruct, Serializer};
-use self::serde::{Deserialize, Serialize};
+use serde::ser::{SerializeStruct, Serializer};
+use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq)]
 pub enum GeometryType {

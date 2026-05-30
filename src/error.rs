@@ -3,7 +3,6 @@
 //  Created     : Wed May 27 01:45:41 2015 by ShuYu Wang
 //  Copyright   : Feather Workshop (c) 2015
 
-use std;
 use std::fmt;
 
 #[derive(Debug)]
