@@ -8,6 +8,7 @@ repository = "https://github.com/arjuote/wkbparse"
 readme = "README.md"
 keywords = ["PostgreSQL", "PostGIS", "GIS", "GEO", "WKB", "TWKB", "GeoJSON"]
 license = "MIT"
+edition = "2021"
 
 [lib]
 name = "wkbparse"
@@ -17,7 +18,7 @@ crate-type = ["cdylib"]
 byteorder = "1.4"
 serde = { version = "1.0.164", features = ["derive"] }
 serde_json = "1.0.99"
-pyo3 = {version = "0.19.0", optional = true}
+pyo3 = {version = "0.28.0", optional = true}
 proj = {version = "0.28.0", optional = true}
 dashmap = {version = "6.1.0", optional = true}
 libsqlite3-sys = {version = ">=0.28,<0.31", features = ["bundled"], optional = true}

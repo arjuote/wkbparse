@@ -1,7 +1,4 @@
 // Python bindings
-#[cfg(feature = "proj")]
-extern crate proj;
-extern crate pyo3;
 use crate::error;
 use crate::ewkb::{
     AsEwkbLineString, AsEwkbMultiLineString, AsEwkbMultiPoint, AsEwkbMultiPolygon, AsEwkbPoint,
@@ -9,18 +6,20 @@ use crate::ewkb::{
 };
 use crate::geojson::{GeoJSONEncode, GeoJSONGeometry, GeometryType};
 
-use self::pyo3::prelude::*;
-use self::pyo3::types::IntoPyDict;
-use self::pyo3::types::{PyBytes, PyDict};
-use error::Error as WKBError;
-use ewkb;
-use geojson;
-use geojson::{
+use pyo3::prelude::*;
+use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python};
+use pyo3::types::{IntoPyDict, PyBytes, PyDict};
+use crate::error::Error as WKBError;
+use crate::ewkb;
+use crate::geojson;
+use crate::geojson::{
     GeoJSONLineString, GeoJSONMultiLineString, GeoJSONMultiPoint, GeoJSONMultiPolygon,
     GeoJSONPoint, GeoJSONPolygon,
 };
-use twkb;
-use twkb::TwkbGeom;
+use crate::twkb;
+use crate::twkb::TwkbGeom;
+
+use pyo3::exceptions::PyValueError;
 
 impl From<WKBError> for PyErr {
     fn from(error: WKBError) -> Self {
@@ -32,22 +31,20 @@ impl From<WKBError> for PyErr {
     }
 }
 
-use self::pyo3::exceptions::PyValueError;
-
-fn pydict_to_geojson(data: &PyDict) -> Result<GeoJSONGeometry, PyErr> {
-    let type_result = match data.get_item("type") {
+fn pydict_to_geojson(data: &Bound<'_, PyDict>) -> Result<GeoJSONGeometry, PyErr> {
+    let type_result = match data.get_item("type")? {
         Some(type_name) => type_name,
         None => return Result::Err(PyValueError::new_err("invalid geojson".to_owned())),
     };
     let type_name: &str = type_result.extract()?;
 
-    let crds_result = match data.get_item("coordinates") {
+    let crds_result = match data.get_item("coordinates")? {
         Some(crds) => crds,
         None => return Result::Err(PyValueError::new_err("invalid geojson".to_owned())),
     };
 
     let crs = {
-        let crs = data.get_item("crs");
+        let crs = data.get_item("crs")?;
         if let Some(crs) = crs {
             let crs: Option<i32> = crs.extract()?;
             crs
@@ -110,52 +107,40 @@ fn pydict_to_geojson(data: &PyDict) -> Result<GeoJSONGeometry, PyErr> {
     Ok(data)
 }
 
-fn geojson_to_pydict<'a>(py: Python<'a>, geom: &GeoJSONGeometry) -> Result<&'a PyDict, PyErr> {
-    let key_vals: Vec<(&str, PyObject)> = match geom {
-        GeoJSONGeometry::Point(g) => {
-            vec![
-                ("type", g.type_name.to_object(py)),
-                ("crs", g.crs.to_object(py)),
-                ("coordinates", g.coordinates.to_object(py)),
-            ]
-        }
-        GeoJSONGeometry::LineString(g) => {
-            vec![
-                ("type", g.type_name.to_object(py)),
-                ("crs", g.crs.to_object(py)),
-                ("coordinates", g.coordinates.to_object(py)),
-            ]
-        }
-        GeoJSONGeometry::Polygon(g) => {
-            vec![
-                ("type", g.type_name.to_object(py)),
-                ("crs", g.crs.to_object(py)),
-                ("coordinates", g.coordinates.to_object(py)),
-            ]
-        }
-        GeoJSONGeometry::MultiPoint(g) => {
-            vec![
-                ("type", g.type_name.to_object(py)),
-                ("crs", g.crs.to_object(py)),
-                ("coordinates", g.coordinates.to_object(py)),
-            ]
-        }
-        GeoJSONGeometry::MultiLineString(g) => {
-            vec![
-                ("type", g.type_name.to_object(py)),
-                ("crs", g.crs.to_object(py)),
-                ("coordinates", g.coordinates.to_object(py)),
-            ]
-        }
-        GeoJSONGeometry::MultiPolygon(g) => {
-            vec![
-                ("type", g.type_name.to_object(py)),
-                ("crs", g.crs.to_object(py)),
-                ("coordinates", g.coordinates.to_object(py)),
-            ]
-        }
+fn geojson_to_pydict<'py>(py: Python<'py>, geom: &GeoJSONGeometry) -> Result<Bound<'py, PyDict>, PyErr> {
+    let key_vals: Vec<(&str, Py<PyAny>)> = match geom {
+        GeoJSONGeometry::Point(g) => vec![
+            ("type", g.type_name.clone().into_pyobject(py)?.into()),
+            ("crs", g.crs.into_pyobject(py)?.into()),
+            ("coordinates", g.coordinates.clone().into_pyobject(py)?.into()),
+        ],
+        GeoJSONGeometry::LineString(g) => vec![
+            ("type", g.type_name.clone().into_pyobject(py)?.into()),
+            ("crs", g.crs.into_pyobject(py)?.into()),
+            ("coordinates", g.coordinates.clone().into_pyobject(py)?.into()),
+        ],
+        GeoJSONGeometry::Polygon(g) => vec![
+            ("type", g.type_name.clone().into_pyobject(py)?.into()),
+            ("crs", g.crs.into_pyobject(py)?.into()),
+            ("coordinates", g.coordinates.clone().into_pyobject(py)?.into()),
+        ],
+        GeoJSONGeometry::MultiPoint(g) => vec![
+            ("type", g.type_name.clone().into_pyobject(py)?.into()),
+            ("crs", g.crs.into_pyobject(py)?.into()),
+            ("coordinates", g.coordinates.clone().into_pyobject(py)?.into()),
+        ],
+        GeoJSONGeometry::MultiLineString(g) => vec![
+            ("type", g.type_name.clone().into_pyobject(py)?.into()),
+            ("crs", g.crs.into_pyobject(py)?.into()),
+            ("coordinates", g.coordinates.clone().into_pyobject(py)?.into()),
+        ],
+        GeoJSONGeometry::MultiPolygon(g) => vec![
+            ("type", g.type_name.clone().into_pyobject(py)?.into()),
+            ("crs", g.crs.into_pyobject(py)?.into()),
+            ("coordinates", g.coordinates.clone().into_pyobject(py)?.into()),
+        ],
     };
-    Ok(key_vals.into_py_dict(py))
+    Ok(key_vals.into_py_dict(py)?)
 }
 
 fn parse_twkb_to_geojson(mut data: &[u8]) -> Result<GeoJSONGeometry, error::Error> {
@@ -228,12 +213,13 @@ fn parse_ewkb_to_geojson(mut data: &[u8]) -> Result<GeoJSONGeometry, error::Erro
 
 /// TWKB parse
 #[pyfunction]
-fn twkb_to_geojson<'a>(
-    py: Python<'a>,
+#[pyo3(signature = (data, from_srid=None, to_srid=None))]
+fn twkb_to_geojson<'py>(
+    py: Python<'py>,
     data: &[u8],
     from_srid: Option<i32>,
     to_srid: Option<i32>,
-) -> PyResult<&'a PyDict> {
+) -> PyResult<Bound<'py, PyDict>> {
     let mut geojson_geom = parse_twkb_to_geojson(data)?;
 
     #[cfg(feature = "proj")]
@@ -249,38 +235,38 @@ fn twkb_to_geojson<'a>(
             }
             (Some(from_srid), Some(to_srid)) => {
                 let xform = get_transform(from_srid, to_srid)?;
-
                 geojson_geom.transform(&xform)?;
                 geojson_geom.set_srid(to_srid);
             }
         };
     }
 
-    let crds = match &geojson_geom {
-        GeoJSONGeometry::Point(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::LineString(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::Polygon(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::MultiPoint(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::MultiLineString(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::MultiPolygon(g) => ("coordinates", g.coordinates.to_object(py)),
+    let crds: Py<PyAny> = match &geojson_geom {
+        GeoJSONGeometry::Point(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::LineString(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::Polygon(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::MultiPoint(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::MultiLineString(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::MultiPolygon(g) => g.coordinates.clone().into_pyobject(py)?.into(),
     };
 
-    let key_vals: Vec<(&str, PyObject)> = vec![
-        ("type", geojson_geom.geom_type().to_string().to_object(py)),
-        ("crs", geojson_geom.srid().to_object(py)),
-        crds,
+    let key_vals: Vec<(&str, Py<PyAny>)> = vec![
+        ("type", geojson_geom.geom_type().to_string().into_pyobject(py)?.into()),
+        ("crs", geojson_geom.srid().into_pyobject(py)?.into()),
+        ("coordinates", crds),
     ];
-    Ok(key_vals.into_py_dict(py))
+    Ok(key_vals.into_py_dict(py)?)
 }
 
 /// EWKB parse
 #[pyfunction]
-fn ewkb_to_geojson<'a>(
-    py: Python<'a>,
+#[pyo3(signature = (data, from_srid=None, to_srid=None))]
+fn ewkb_to_geojson<'py>(
+    py: Python<'py>,
     data: &[u8],
     from_srid: Option<i32>,
     to_srid: Option<i32>,
-) -> PyResult<&'a PyDict> {
+) -> PyResult<Bound<'py, PyDict>> {
     let mut geojson_geom = parse_ewkb_to_geojson(data)?;
 
     #[cfg(feature = "proj")]
@@ -309,28 +295,27 @@ fn ewkb_to_geojson<'a>(
             }
             (Some(from_srid), Some(to_srid)) => {
                 let xform = get_transform(from_srid, to_srid)?;
-
                 geojson_geom.transform(&xform)?;
                 geojson_geom.set_srid(to_srid);
             }
         };
     }
 
-    let crds = match &geojson_geom {
-        GeoJSONGeometry::Point(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::LineString(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::Polygon(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::MultiPoint(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::MultiLineString(g) => ("coordinates", g.coordinates.to_object(py)),
-        GeoJSONGeometry::MultiPolygon(g) => ("coordinates", g.coordinates.to_object(py)),
+    let crds: Py<PyAny> = match &geojson_geom {
+        GeoJSONGeometry::Point(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::LineString(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::Polygon(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::MultiPoint(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::MultiLineString(g) => g.coordinates.clone().into_pyobject(py)?.into(),
+        GeoJSONGeometry::MultiPolygon(g) => g.coordinates.clone().into_pyobject(py)?.into(),
     };
 
-    let key_vals: Vec<(&str, PyObject)> = vec![
-        ("type", geojson_geom.geom_type().to_string().to_object(py)),
-        ("crs", geojson_geom.srid().to_object(py)),
-        crds,
+    let key_vals: Vec<(&str, Py<PyAny>)> = vec![
+        ("type", geojson_geom.geom_type().to_string().into_pyobject(py)?.into()),
+        ("crs", geojson_geom.srid().into_pyobject(py)?.into()),
+        ("coordinates", crds),
     ];
-    Ok(key_vals.into_py_dict(py))
+    Ok(key_vals.into_py_dict(py)?)
 }
 
 #[cfg(not(feature = "proj"))]
@@ -342,12 +327,13 @@ fn reproject_not_implemented() -> PyResult<()> {
 }
 
 #[pyfunction]
-fn geojson_to_ewkb<'a>(
-    py: Python<'a>,
-    data: &PyDict,
+#[pyo3(signature = (data, from_srid=None, to_srid=None))]
+fn geojson_to_ewkb<'py>(
+    py: Python<'py>,
+    data: &Bound<'_, PyDict>,
     from_srid: Option<i32>,
     to_srid: Option<i32>,
-) -> PyResult<&'a PyBytes> {
+) -> PyResult<Bound<'py, PyBytes>> {
     let mut geom = pydict_to_geojson(data)?;
 
     #[cfg(feature = "proj")]
@@ -376,7 +362,6 @@ fn geojson_to_ewkb<'a>(
             }
             (Some(from_srid), Some(to_srid)) => {
                 let xform = get_transform(from_srid, to_srid)?;
-
                 geom.transform(&xform)?
             }
         };
@@ -394,7 +379,7 @@ fn geojson_to_ewkb<'a>(
 }
 
 #[pyfunction]
-fn twkb_to_ewkb<'a>(py: Python<'a>, mut data: &[u8]) -> PyResult<&'a PyBytes> {
+fn twkb_to_ewkb<'py>(py: Python<'py>, mut data: &[u8]) -> PyResult<Bound<'py, PyBytes>> {
     let geom_type = twkb::get_geom_type(&[data[0]]);
     let result = match geom_type {
         GeometryType::Point => {
@@ -464,18 +449,17 @@ mod reproject {
     use crate::geojson::GeoJSONEncode;
     use crate::pyo::pydict_to_geojson;
     use crate::reproject::get_transform;
-    use pyo::pyo3::pyfunction;
-    use pyo::pyo3::types::PyDict;
-    use pyo::pyo3::Python;
-    use pyo::PyResult;
+    use pyo3::prelude::*;
+    use pyo3::types::PyDict;
 
     #[pyfunction]
-    pub(crate) fn reproject_geojson<'a>(
-        py: Python<'a>,
-        data: &PyDict,
+    #[pyo3(signature = (data, to_srid, from_srid=None))]
+    pub(crate) fn reproject_geojson<'py>(
+        py: Python<'py>,
+        data: &Bound<'_, PyDict>,
         to_srid: i32,
         from_srid: Option<i32>,
-    ) -> PyResult<&'a PyDict> {
+    ) -> PyResult<Bound<'py, PyDict>> {
         let mut geom = pydict_to_geojson(data)?;
         let from_srid = {
             if let Some(from_srid) = from_srid {
@@ -498,14 +482,14 @@ mod reproject {
 
 /// Conversions between EWKB, TWKB and GeoJSON geometries.
 #[pymodule]
-fn wkbparse(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(pyo::twkb_to_geojson, m)?)?;
-    m.add_function(wrap_pyfunction!(pyo::ewkb_to_geojson, m)?)?;
-    m.add_function(wrap_pyfunction!(pyo::geojson_to_ewkb, m)?)?;
-    m.add_function(wrap_pyfunction!(pyo::twkb_to_ewkb, m)?)?;
+fn wkbparse(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(twkb_to_geojson, m)?)?;
+    m.add_function(wrap_pyfunction!(ewkb_to_geojson, m)?)?;
+    m.add_function(wrap_pyfunction!(geojson_to_ewkb, m)?)?;
+    m.add_function(wrap_pyfunction!(twkb_to_ewkb, m)?)?;
     #[cfg(feature = "proj")]
-    m.add_function(wrap_pyfunction!(pyo::reproject::reproject_geojson, m)?)?;
+    m.add_function(wrap_pyfunction!(reproject::reproject_geojson, m)?)?;
     #[cfg(not(feature = "proj"))]
-    m.add_function(wrap_pyfunction!(pyo::reproject_not_implemented, m)?)?;
+    m.add_function(wrap_pyfunction!(reproject_not_implemented, m)?)?;
     Ok(())
 }

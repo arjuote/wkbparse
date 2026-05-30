@@ -12,9 +12,7 @@
 
 use crate::geojson::GeometryType;
 use crate::{error::Error, types as postgis};
-extern crate byteorder;
-use self::byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
-use std;
+use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 use std::io::prelude::*;
 use std::iter::FromIterator;

@@ -1,8 +1,6 @@
-extern crate dashmap;
-extern crate proj;
-use self::dashmap::DashMap;
-use self::proj::Coord;
-use self::proj::Proj;
+use dashmap::DashMap;
+use proj::Coord;
+use proj::Proj;
 use crate::error::Error;
 use crate::geojson::MultiLineString;
 use crate::geojson::MultiPoint;
