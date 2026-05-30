@@ -18,15 +18,15 @@ The benefits may be especially noticeable when dealing with large geometries wit
 
 Pre-built wheels are available for the following platforms and python versions:
 
-Python versions: `[3.8, 3.9, 3.10, 3.11, 3.12]`
+Python versions: `[3.9, 3.10, 3.11, 3.12, 3.13, 3.14]`
 
 Platforms: Linux `[x86_64, x86, aarch64, armv7, s390x, ppc64le]`, Windows: `[x64, x86]`, MacOS: `[x86_64, aarch64]`
 
 Install by saying `pip install wkbparse`.
 
-Supported python version is >=3.8.
+Supported python version is >=3.9.
 
-Tested on Python versions 3.8, 3.9, 3.10, 3.11 on Linux x86_64.
+Tested on Python versions 3.12, 3.13, 3.14 on Linux x86_64.
 
 ## Reprojection
 
