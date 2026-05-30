@@ -20,6 +20,7 @@ serde_json = "1.0.99"
 pyo3 = {version = "0.19.0", optional = true}
 proj = {version = "0.28.0", optional = true}
 dashmap = {version = "6.1.0", optional = true}
+libsqlite3-sys = {version = ">=0.28,<0.31", features = ["bundled"], optional = true}
 
 
 [profile.release]
@@ -32,4 +33,4 @@ approx = "0.5.1"
 python = ["pyo3"]
 extension-module = ["pyo3/extension-module"]
 default = ["python", "extension-module"]
-proj = ["dep:proj", "dep:dashmap"]
+proj = ["dep:proj", "dep:dashmap", "dep:libsqlite3-sys"]

@@ -51,6 +51,10 @@ jobs:
           args: --release --strip --out dist --find-interpreter -F proj
           sccache: "true"
           manylinux: auto
+          before-script-linux: |
+            curl -fsSL https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz | tar xz
+            cd sqlite-autoconf-3460000 && ./configure --prefix=/usr/local && make -j$(nproc) && make install
+            cd .. && rm -rf sqlite-autoconf-3460000
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
